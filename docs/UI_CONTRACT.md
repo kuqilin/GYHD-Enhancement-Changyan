@@ -61,7 +61,7 @@ app.exec_()
 | `set_minimize_to_tray(bool)` | `None` | 保存配置 |
 | `set_guard_enabled(bool)` | `None` | 保存配置并启动/停止守护线程 |
 | `set_kill_only_during_slideshow(bool)` | `None` | 保存配置；守护运行中会重启线程生效 |
-| `set_guard_dry_run(bool, persist=True)` | `None` | 演练模式；`persist=False` 用于命令行临时覆盖 |
+| `set_guard_dry_run(bool)` | `None` | 持久化演练模式开关（命令行 `--dry-run` 不走这里） |
 | `set_autostart(bool)` | `bool` | 写/删 HKCU Run 项；失败发 `error` 并返回 `False` |
 
 只读属性：
@@ -69,6 +69,8 @@ app.exec_()
 - `controller.config`：当前 `Config`，**不要直接改字段**，用上面的 setter 才会保存并通知。
 - `controller.autostart_enabled`：读注册表的真实状态。
 - `controller.monitoring`：守护线程是否在运行。
+- `controller.dry_run_active`：本次运行是否演练模式（命令行 `--dry-run` 优先于配置；
+  命令行覆盖不会写回 `config.json`）。
 
 ## 4. 配置字段
 

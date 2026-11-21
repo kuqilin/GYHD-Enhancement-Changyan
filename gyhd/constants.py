@@ -10,7 +10,7 @@ from pathlib import Path
 APP_ID = "GYHD-Enhancement-Changyan"
 APP_NAME = "GYHD 增强工具"
 APP_NAME_FULL = "GYHD 增强工具 · 长焰"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 ORG_NAME = "kuqilin"
 GITHUB_URL = "https://github.com/kuqilin/GYHD-Enhancement-Changyan"
 

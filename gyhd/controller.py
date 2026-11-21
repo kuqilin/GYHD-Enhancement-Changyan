@@ -39,6 +39,8 @@ class AppController(QObject):
         self,
         config_store: ConfigStore | None = None,
         parent: QObject | None = None,
+        *,
+        dry_run_override: bool = False,
     ) -> None:
         super().__init__(parent)
         self._store = config_store or ConfigStore()
@@ -51,6 +53,8 @@ class AppController(QObject):
         self._started = False
         self._last_guard_error = ""
         self._last_kill_error = ""
+        # 命令行 --dry-run 只影响本次运行，绝不写回 config.json。
+        self._dry_run_override = bool(dry_run_override)
 
     @property
     def config(self) -> Config:
@@ -59,6 +63,11 @@ class AppController(QObject):
     @property
     def autostart_enabled(self) -> bool:
         return autostart.is_enabled()
+
+    @property
+    def dry_run_active(self) -> bool:
+        """本次运行是否处于演练模式（命令行覆盖优先于配置）。"""
+        return self._dry_run_override or self._config.guard_dry_run
 
     @property
     def monitoring(self) -> bool:
@@ -137,10 +146,9 @@ class AppController(QObject):
         self.config_changed.emit(self._config)
         self._restart_guard_if_running()
 
-    def set_guard_dry_run(self, enabled: bool, *, persist: bool = True) -> None:
+    def set_guard_dry_run(self, enabled: bool) -> None:
         self._config.guard_dry_run = bool(enabled)
-        if persist:
-            self._save()
+        self._save()
         self.config_changed.emit(self._config)
         self._restart_guard_if_running()
 
@@ -164,9 +172,11 @@ class AppController(QObject):
     def _start_guard(self) -> None:
         if self._worker is not None:
             return
+        if self.dry_run_active:
+            logger.warning("演练模式已开启：只记录检测结果，不会结束录屏进程")
         guard = WpsGuard(
             kill_only_during_slideshow=self._config.kill_only_during_slideshow,
-            dry_run=self._config.guard_dry_run,
+            dry_run=self.dry_run_active,
         )
         worker = GuardWorker(guard, self._config.guard_interval_ms, parent=self)
         worker.slideshow_changed.connect(self._on_slideshow)

@@ -159,6 +159,11 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.slideshow_label)
         layout.addWidget(self.kill_count_label)
 
+        self.dry_run_label = QLabel("⚠ 演练模式：只记录，不结束录屏进程")
+        self.dry_run_label.setStyleSheet("color: #b26a00; font-weight: 600;")
+        self.dry_run_label.setVisible(self._controller.dry_run_active)
+        layout.addWidget(self.dry_run_label)
+
         hint = QLabel(
             "命中 ApowerREC / kapower 录屏进程时自动结束。"
             "想先验证是否识别正确，可在 config.json 里把 guard_dry_run 设为 true。"
@@ -268,7 +273,10 @@ class MainWindow(QMainWindow):
     def _on_monitoring_changed(self, enabled: bool) -> None:
         _set_checked(self.guard_check, enabled)
         self.only_slideshow_check.setEnabled(enabled)
-        self._append_log("后台守护已开启" if enabled else "后台守护已暂停")
+        if enabled and self._controller.dry_run_active:
+            self._append_log("后台守护已开启（演练模式，不会结束录屏进程）")
+        else:
+            self._append_log("后台守护已开启" if enabled else "后台守护已暂停")
 
     def _on_autostart_changed(self, enabled: bool) -> None:
         _set_checked(self.autostart_check, enabled)
@@ -292,6 +300,7 @@ class MainWindow(QMainWindow):
         _set_checked(self.minimize_check, config.minimize_to_tray)
         _set_checked(self.autostart_check, self._controller.autostart_enabled)
         self.only_slideshow_check.setEnabled(config.guard_enabled)
+        self.dry_run_label.setVisible(self._controller.dry_run_active)
 
     def _append_log(self, message: str) -> None:
         stamp = QTime.currentTime().toString("HH:mm:ss")

@@ -87,11 +87,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        controller = AppController(ConfigStore())
-        if args.dry_run:
-            # 只改内存中的配置，不写回 config.json
-            controller.config.guard_dry_run = True
-            logger.info("已启用演练模式：不会真正结束录屏进程")
+        # --dry-run 通过 override 传入，不修改、也不保存 config.guard_dry_run。
+        controller = AppController(ConfigStore(), dry_run_override=args.dry_run)
 
         window = MainWindow(controller)
         tray = TrayIcon(controller, window)

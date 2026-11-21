@@ -115,9 +115,11 @@ pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --ti
 ```powershell
 python main.py                 # 显示主界面
 python main.py --minimized     # 只留托盘（开机自启使用）
-python main.py --dry-run       # 演练模式：只记录，不结束录屏进程
+python main.py --dry-run       # 演练模式：只记录，不结束录屏进程（不会写进配置）
 python main.py --debug         # 控制台 + 文件日志
 ```
+
+`--dry-run` 只影响本次进程，退出时不会保存；持久开关是 `config.json` 里的 `guard_dry_run`。
 
 如果当前目录不是项目根目录，建议用 `python D:\path\to\GYHD-Enhancement-Changyan\main.py`，
 配置路径仍然是 `%LOCALAPPDATA%`，不会因为 CWD 不同而读错。
@@ -189,7 +191,7 @@ python tools/diagnose_wps.py
 python -m unittest discover -s tests -v
 ```
 
-当前 41 个用例，覆盖：
+当前 43 个用例，覆盖：
 
 - 配置默认值、往返读写、损坏备份、间隔限制、未知字段兼容
 - 图片枚举/排序、避开当前壁纸、系统调用失败
@@ -287,6 +289,12 @@ WPS 更新可能改窗口标题、窗口类或录屏插件名。出现“识别�
 **Q：我正常用 ApowerREC 录别的内容，会被误杀吗？**
 默认 `kill_only_during_slideshow=true`，只有 WPS 处于全屏放映时才杀；
 不在放映时录屏不受影响。放映期间如果你确实要录，先取消勾选“启用后台守护”。
+
+**Q：没加 `--dry-run`，日志还是显示“演练模式”？**
+0.1.0 有一个 bug：`--dry-run` 在退出时被 `shutdown()` 保存进了 `config.json`。
+0.1.1 已修好，并且同一 PID 不再每 500 ms 刷一行日志。把
+`%LOCALAPPDATA%\GYHD-Enhancement-Changyan\config.json` 里的 `guard_dry_run` 改成
+`false`（或删掉该字段，默认就是 false）即可。
 
 **Q：WPS 以管理员身份运行，守护杀不掉？**
 Windows 不允许低完整性进程结束高完整性进程。让本程序和 WPS 使用相同权限运行；

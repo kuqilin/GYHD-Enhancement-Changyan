@@ -29,6 +29,8 @@ class GuardWorker(QThread):
         self._stop_event = threading.Event()
         self._last_slideshow: bool | None = None
         self._last_wps: bool | None = None
+        # 演练模式下同一 PID 只报一次，避免每 500ms 刷一行日志。
+        self._reported_dry_run_pids: set[int] = set()
 
     def run(self) -> None:
         while not self._stop_event.is_set():
@@ -53,7 +55,13 @@ class GuardWorker(QThread):
         for kill in snapshot.killed:
             self.recorder_killed.emit(kill)
         for kill in snapshot.would_kill:
-            self.recorder_detected.emit(kill)
+            if kill.pid not in self._reported_dry_run_pids:
+                self._reported_dry_run_pids.add(kill.pid)
+                self.recorder_detected.emit(kill)
+        # 进程退出后允许同一 PID（理论上少见）或下一次启动重新上报。
+        self._reported_dry_run_pids &= {
+            process.pid for process in snapshot.recorders
+        }
         for process in snapshot.failures:
             self.kill_failed.emit(process)
 
