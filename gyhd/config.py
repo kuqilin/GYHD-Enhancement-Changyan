@@ -52,6 +52,8 @@ class Config:
     # 演练模式：只记录“本应结束哪个进程”，不真的调用 TerminateProcess。
     guard_dry_run: bool = False
     minimize_to_tray: bool = True
+    # 是否在启动时自动确保“启动”文件夹里的自启快捷方式存在。
+    autostart: bool = True
 
     def normalized(self) -> "Config":
         folder = (self.wallpaper_folder or "").strip() or DEFAULT_WALLPAPER_FOLDER
@@ -69,6 +71,7 @@ class Config:
             kill_only_during_slideshow=bool(self.kill_only_during_slideshow),
             guard_dry_run=bool(self.guard_dry_run),
             minimize_to_tray=bool(self.minimize_to_tray),
+            autostart=bool(self.autostart),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,6 +84,7 @@ class Config:
             "kill_only_during_slideshow": self.kill_only_during_slideshow,
             "guard_dry_run": self.guard_dry_run,
             "minimize_to_tray": self.minimize_to_tray,
+            "autostart": self.autostart,
         }
 
     @classmethod
@@ -103,6 +107,7 @@ class Config:
             ),
             guard_dry_run=_as_bool(data.get("guard_dry_run"), False),
             minimize_to_tray=_as_bool(data.get("minimize_to_tray"), True),
+            autostart=_as_bool(data.get("autostart"), True),
         )
 
 
@@ -114,7 +119,7 @@ def _toml_string(value: str) -> str:
 def dump_toml(config: Config) -> str:
     """只序列化当前这些扁平字段，不引入额外依赖。"""
     lines = [
-        "# GYHD 增强工具配置（TOML）",
+        "# 花都校区畅言增强工具配置（TOML）",
         "# 修改后重启程序生效；程序退出时也会回写这个文件。",
         "",
     ]

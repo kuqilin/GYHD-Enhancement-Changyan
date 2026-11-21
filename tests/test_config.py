@@ -50,6 +50,7 @@ class ConfigTest(unittest.TestCase):
         config.guard_interval_ms = 750
         config.kill_only_during_slideshow = False
         config.guard_dry_run = True
+        config.autostart = False
         self.store.save(config)
 
         loaded = self.store.load()
@@ -58,6 +59,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(loaded.guard_interval_ms, 750)
         self.assertFalse(loaded.kill_only_during_slideshow)
         self.assertTrue(loaded.guard_dry_run)
+        self.assertFalse(loaded.autostart)
         self.assertFalse((self._tmp / "config.toml.tmp").exists())
 
     def test_corrupt_toml_is_backed_up(self) -> None:

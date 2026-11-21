@@ -12,10 +12,17 @@ window = MainWindow(controller)
 tray = TrayIcon(controller, window)
 window.set_tray_available(tray.available)
 tray.show()
-controller.start()          # 只调用一次
+controller.start()          # 只调用一次；会按 config.autostart 自动补快捷方式
 app.aboutToQuit.connect(controller.shutdown)
 app.exec_()
 ```
+
+`main.py` 还负责部署和启动参数：
+
+- 第一次从别处运行：复制到 `D:\GYHD-Enhancement-Changyan` 并重启
+- `--startup` / `--minimized`：不显示主窗口，换壁纸 + 后台守护 + 托盘
+- `--wallpaper-only`：只换壁纸后退出
+- `--skip-deploy`：调试时跳过 D 盘复制
 
 重写界面时保留：
 
@@ -39,7 +46,7 @@ app.exec_()
 | `recorder_blocked` | `str` 进程名, `int` PID | 真实结束了一个录屏进程 |
 | `recorder_detected` | `str` 进程名, `int` PID | 演练模式：检测到但没结束 |
 | `monitoring_changed` | `bool` | 守护线程启动/暂停 |
-| `autostart_changed` | `bool` | 开机自启开关成功改变 |
+| `autostart_changed` | `bool` | 开机自启快捷方式存在状态变化（包括启动时自动创建） |
 | `error` | `str` | 非致命错误（写配置失败、结束进程失败、轮询异常） |
 
 约定：
@@ -62,7 +69,7 @@ app.exec_()
 | `set_guard_enabled(bool)` | `None` | 保存配置并启动/停止守护线程 |
 | `set_kill_only_during_slideshow(bool)` | `None` | 保存配置；守护运行中会重启线程生效 |
 | `set_guard_dry_run(bool)` | `None` | 持久化演练模式开关（命令行 `--dry-run` 不走这里） |
-| `set_autostart(bool)` | `bool` | 写/删 HKCU Run 项；失败发 `error` 并返回 `False` |
+| `set_autostart(bool)` | `bool` | 创建/删除“启动”文件夹快捷方式，并更新 `config.autostart`；失败发 `error` 并返回 `False` |
 
 只读属性：
 
@@ -83,6 +90,7 @@ config.guard_enabled
 config.kill_only_during_slideshow
 config.guard_dry_run
 config.minimize_to_tray
+config.autostart
 ```
 
 ## 5. 线程规则
@@ -245,7 +253,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 ## 7. 建议布局
 
 ```
-┌─ GYHD 增强工具 ─────────────────────────────┐
+┌─ 花都校区畅言增强工具 ───────────────────────┐
 │  随机壁纸 · WPS 放映时结束误触录屏            │
 │                                              │
 │  ┌ 桌面壁纸 ──────────────────────────────┐  │

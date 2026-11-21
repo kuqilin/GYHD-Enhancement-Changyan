@@ -20,6 +20,7 @@ try {
         "--name", "GYHD-Enhancement-Changyan",
         "--icon", "assets\GY_1080x1080.ico",
         "--add-data", "assets;assets",
+        "--hidden-import", "win32com.client",
         "main.py"
     )
     python -m PyInstaller @pyArgs

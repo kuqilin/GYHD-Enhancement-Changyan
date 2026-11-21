@@ -1,4 +1,4 @@
-# GYHD 增强工具（长焰）
+# 花都校区畅言增强工具
 
 从 [HuaDuXiaoQuDingZhiBiZhiQieHuan](https://github.com/kuqilin/HuaDuXiaoQuDingZhiBiZhiQieHuan) 衍生出来的 Qt5 新项目，把两件事合到一个后台程序里：
 
@@ -12,11 +12,12 @@
 
 - 随机壁纸：支持 `.jpg` `.jpeg` `.png` `.bmp` `.gif`，默认避开当前壁纸，避免连续两次同一张
 - 壁纸文件夹可在界面里选择，配置保存在 `%LOCALAPPDATA%`，不再依赖当前工作目录
-- WPS 放映检测：识别全屏放映窗口，而不是简单地“WPS 在运行就杀”
+- 自动部署：第一次从别处运行时，复制到 `D:\GYHD-Enhancement-Changyan` 并自动重启
+- 开机自启：启动时检查“启动”文件夹，没有快捷方式就自动创建，不需要管理员权限
+- 启动参数：`--startup` 不显示主界面，只换壁纸并进入后台守护；`--wallpaper-only` 只换壁纸后退出- WPS 放映检测：识别全屏放映窗口，而不是简单地“WPS 在运行就杀”
 - 录屏拦截：默认**只在 PPT 全屏放映时**结束 `ApowerREC.exe` 及其同目录辅助进程
 - 演练模式：只记录“本应结束哪个进程”，不真的杀，便于在真机上验证识别是否正确
 - 系统托盘：关闭窗口可最小化到托盘，托盘菜单可暂停守护、立即换壁纸
-- 开机自启：写当前用户的 `HKCU\...\Run`，不需要管理员权限
 - 单实例：重复启动不会产生两个守护线程
 - 文件日志：`%LOCALAPPDATA%\GYHD-Enhancement-Changyan\logs\app.log`
 
@@ -79,7 +80,7 @@ Preparing for Apower
 - Windows 10 / 11
 - Python 3.10+（3.11+ 用标准库 `tomllib`；3.10 会从 requirements 安装 `tomli`）
 - PyQt5 >= 5.15.11
-- 不需要 pywin32，进程/窗口/壁纸全部用 `ctypes` + `winreg` 调 Win32 API
+- pywin32 >= 306（只用于创建开机自启的 `.lnk`；进程/窗口/壁纸仍然用 `ctypes` + `winreg`）
 
 ## 从源码运行
 
@@ -113,16 +114,41 @@ pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --ti
 ### 4. 运行
 
 ```powershell
-python main.py                 # 显示主界面
-python main.py --minimized     # 只留托盘（开机自启使用）
-python main.py --dry-run       # 演练模式：只记录，不结束录屏进程（不会写进配置）
-python main.py --debug         # 控制台 + 文件日志
+python main.py                  # 显示主界面
+python main.py --startup        # 开机自启：不显示主界面，换壁纸 + 后台守护
+python main.py --wallpaper-only # 只换一张壁纸后退出，不启动界面/守护
+python main.py --dry-run        # 演练模式：只记录，不结束录屏进程（不会写进配置）
+python main.py --debug          # 控制台 + 文件日志
 ```
 
+`--startup` 和 `--minimized` 等价，都是“隐藏主窗口、保留托盘和后台守护”。
 `--dry-run` 只影响本次进程，退出时不会保存；持久开关是 `config.toml` 里的 `guard_dry_run`。
 
 如果当前目录不是项目根目录，建议用 `python D:\path\to\GYHD-Enhancement-Changyan\main.py`，
 配置路径仍然是 `%LOCALAPPDATA%`，不会因为 CWD 不同而读错。
+
+## 自动部署与开机自启
+
+第一次从桌面、下载目录或源码目录运行时：
+
+1. 检查 `D:\GYHD-Enhancement-Changyan` 是否已经有完整程序；
+2. 没有就复制过去，然后用相同参数从 D 盘重新启动，当前进程退出；
+3. 新进程启动后检查“启动”文件夹里的快捷方式，没有就创建，参数固定为 `--startup`。
+
+自启快捷方式位置：
+
+```
+%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\GYHD-Enhancement-Changyan.lnk
+```
+
+行为细节：
+
+- D 盘不存在、没有写权限或复制失败：只记日志，继续从当前位置运行，不阻塞使用
+- 调试时可以加 `--skip-deploy`，或设置环境变量 `GYHD_SKIP_DEPLOY=1`
+- 想换安装位置：设置 `GYHD_INSTALL_DIR`，或改 `gyhd/constants.py` 的 `DEFAULT_INSTALL_DIR`
+- 快捷方式由 pywin32 创建；pywin32 不可用时降级写 `HKCU\...\Run`，至少保证能自启
+- 取消界面里的“开机自动启动”会把 `config.toml` 的 `autostart` 写成 `false`，
+  这样下次启动就不会又自动建回来；想恢复就重新勾选
 
 ## 配置
 
@@ -137,6 +163,7 @@ guard_interval_ms = 500
 kill_only_during_slideshow = true
 guard_dry_run = false
 minimize_to_tray = true
+autostart = true
 ```
 
 路径建议用单引号（TOML literal string），这样 Windows 反斜杠不需要写成 `\\`。
@@ -154,6 +181,7 @@ minimize_to_tray = true
 | `kill_only_during_slideshow` | `true`：只在放映时杀；`false`：任何时候发现录屏进程都杀 |
 | `guard_dry_run` | 演练模式，只产生“检测到”日志，不调用 `TerminateProcess` |
 | `minimize_to_tray` | 关闭主窗口时是否隐藏到托盘 |
+| `autostart` | 是否在启动时自动确保开机自启快捷方式存在；界面取消勾选后写 `false` |
 
 日志：`%LOCALAPPDATA%\GYHD-Enhancement-Changyan\logs\app.log`，单文件 1 MB，保留 3 份。
 
@@ -187,8 +215,7 @@ python tools/diagnose_wps.py
 完整的信号/方法/配置字段说明、线程规则和建议布局见
 **[docs/UI_CONTRACT.md](docs/UI_CONTRACT.md)**。
 
-> 显示名“长焰”取自仓库名 `Changyan`，在 `gyhd/constants.py` 的 `APP_NAME_FULL` 里；
-> 想换中文名只改这一行，窗口标题、托盘、自启项都会跟着变。
+> 显示名在 `gyhd/constants.py` 的 `APP_NAME_FULL` 里，窗口标题、托盘、自启项都会跟着变。
 
 ## 测试
 
@@ -196,10 +223,11 @@ python tools/diagnose_wps.py
 python -m unittest discover -s tests -v
 ```
 
-当前 48 个用例，覆盖：
+当前 58 个用例，覆盖：
 
 - 配置默认值、TOML 往返、损坏备份、JSON→TOML 迁移、间隔限制、未知字段兼容
 - 命令行 `--dry-run` 不写回配置的回归测试
+- 部署复制：忽略 tests/runtime/.git/config，识别已安装目录，快捷方式参数
 - 图片枚举/排序、避开当前壁纸、系统调用失败
 - 放映窗口判定：英文/中文标题、全屏兜底、编辑器窗口不误判、文件名含“放映”不误判
 - 录屏进程判定：WPS 插件路径、独立安装的 ApowerREC、同目录 helper/ffmpeg、WPS 自身不误判
@@ -218,27 +246,31 @@ Get-Content "$env:LOCALAPPDATA\GYHD-Enhancement-Changyan\logs\app.log" -Tail 20
 
 ```powershell
 pip install -r requirements-dev.txt
-pyinstaller -F -w -i .\assets\GY_1080x1080.ico --add-data "assets;assets" --name GYHD-Enhancement-Changyan .\main.py --clean
+pyinstaller -F -w -i .\assets\GY_1080x1080.ico --add-data "assets;assets" --hidden-import win32com.client --name GYHD-Enhancement-Changyan .\main.py --clean
 ```
 
 - `--add-data "assets;assets"`：托盘图标是运行时从 `assets/` 读的，必须一起打进去
+- `--hidden-import win32com.client`：创建开机自启 `.lnk` 用，漏了会在运行时找不到模块
 - `-w`：无控制台；日志仍然写到文件
 - `-F`：单文件。后台常驻程序也可以用 `-D`（onedir），启动更快、被杀毒误报更少
-- 打包后 `autostart` 会自动改成指向 exe，不再依赖 Python
+- 打包后快捷方式会指向 exe，不再依赖 Python
 
 产物在 `dist\GYHD-Enhancement-Changyan.exe`。
 
 ## 开机自启
 
-界面里的“开机自动启动（当前用户）”勾选即可，背后是：
+程序启动时会自动检查“启动”文件夹里有没有 `GYHD-Enhancement-Changyan.lnk`，
+没有就创建，参数固定为 `--startup`。位置：
 
 ```
-HKCU\Software\Microsoft\Windows\CurrentVersion\Run
-    GYHD-Enhancement-Changyan = "<程序路径>" --minimized
+%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\GYHD-Enhancement-Changyan.lnk
 ```
 
-不需要管理员权限，卸载时取消勾选即可删除。源码运行时命令会指向
-`venv\Scripts\pythonw.exe main.py`；**删掉 venv 后自启会失效**，需要重新勾选或用打包后的 exe。
+`--startup` 的行为：不显示主界面，换一张壁纸，并启动托盘和后台 WPS 守护。
+它和 `--minimized` 等价。想要“只换壁纸、不常驻”，用 `--wallpaper-only`。
+
+不需要管理员权限。界面里的“开机自动启动”取消勾选后，会删除快捷方式并把
+`config.toml` 的 `autostart` 写成 `false`，下次启动不会又自动建回来。
 
 ## 目录结构
 
@@ -254,11 +286,12 @@ GYHD-Enhancement-Changyan/
 │  ├─ winproc.py               # ctypes：枚举进程、TerminateProcess
 │  ├─ winwindow.py             # ctypes：枚举顶层窗口、显示器矩形
 │  ├─ wallpaper.py             # ctypes：SystemParametersInfoW 设置壁纸
-│  ├─ autostart.py             # HKCU Run 项
+│  ├─ deployment.py            # 复制自身到 D 盘并重启
+│  ├─ autostart.py             # 启动文件夹 .lnk，pywin32 创建
 │  ├─ single_instance.py       # CreateMutexW
 │  ├─ logging_setup.py
 │  └─ ui/                      # 占位界面 + 托盘（你来改）
-├─ tests/                      # 48 个 unittest
+├─ tests/                      # 58 个 unittest
 ├─ tools/diagnose_wps.py       # 只读诊断：窗口/录屏进程
 ├─ docs/UI_CONTRACT.md         # 界面后端契约
 ├─ assets/GY_1080x1080.ico
@@ -306,6 +339,25 @@ WPS 更新可能改窗口标题、窗口类或录屏插件名。出现“识别�
 优先读 `config.toml`。只有找不到 TOML 时才会读 `config.json` 并自动迁移，
 迁移成功后旧文件会改名成 `config.json.migrated-<时间戳>`。
 
+**Q：第一次运行没有复制到 D 盘？**
+看日志里的 `部署到 ... 失败`。常见原因：D 盘不存在、D 盘根目录没有写权限、
+`D:\GYHD-Enhancement-Changyan` 已经存在。可以用环境变量
+`GYHD_INSTALL_DIR` 换目标目录，或加 `--skip-deploy` 跳过部署。
+
+**Q：启动文件夹里没有快捷方式 / 开机没自启？**
+先确认 `config.toml` 里 `autostart = true`，然后手动跑：
+
+```powershell
+python -c "from gyhd import autostart; print(autostart.ensure_shortcut()); print(autostart.shortcut_path())"
+```
+
+如果提示 pywin32 未安装，执行 `pip install -r requirements.txt`。旧版本的
+`HKCU\...\Run` 会被自动清理，避免和快捷方式重复启动。
+
+**Q：`--startup` 为什么还保留了托盘和守护？**
+因为 WPS 录屏守护需要常驻，主窗口不显示但进程要继续跑。如果你只想要
+“换完壁纸就退出、不常驻”，把快捷方式参数改成 `--wallpaper-only` 即可。
+
 **Q：WPS 以管理员身份运行，守护杀不掉？**
 Windows 不允许低完整性进程结束高完整性进程。让本程序和 WPS 使用相同权限运行；
 如果 WPS 是管理员启动的，本程序也要以管理员启动。
@@ -326,6 +378,9 @@ Windows 不允许低完整性进程结束高完整性进程。让本程序和 WP
 ## 已知限制
 
 - 只支持 Windows；`ctypes` 直接调用 `user32` / `psapi` / `kernel32`。
+- 自动部署只在 `D:\GYHD-Enhancement-Changyan` 缺失时复制；D 盘已有旧版本不会自动覆盖，
+  需要手动删掉旧目录再运行，或用 `GYHD_INSTALL_DIR` 换一个目标目录。
+- 从源码运行时，D 盘副本仍依赖当前 Python 环境；打包成 exe 后自启才完全独立。
 - 放映判定基于 WPS 12.1 的实测特征，WPS 大版本升级后可能需要更新关键字（见“维护与适配”）。
 - 录屏拦截是“启动后结束”，不是内核级阻止；对极短的录制仍可能截到开头几帧。
 - 多显示器时，只要任意一个 WPS 放映窗口命中，就认为在放映；没有区分“演讲者视图”和“观众视图”。

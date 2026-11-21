@@ -77,6 +77,19 @@ class AppController(QObject):
         if self._started:
             return
         self._started = True
+
+        # 启动时自动检查“启动”文件夹里的快捷方式；用户取消勾选后
+        # config.autostart=false，这里就不会再自动创建。
+        if self._config.autostart:
+            try:
+                autostart.ensure_shortcut()
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("自动创建开机自启快捷方式失败")
+                self.error.emit(f"自动创建开机自启快捷方式失败：{exc}")
+        else:
+            autostart.remove_legacy_run_entry()
+        self.autostart_changed.emit(autostart.is_enabled())
+
         if self._config.change_wallpaper_on_start:
             QTimer.singleShot(0, self.change_wallpaper)
         if self._config.guard_enabled:
@@ -153,14 +166,26 @@ class AppController(QObject):
         self._restart_guard_if_running()
 
     def set_autostart(self, enabled: bool) -> bool:
+        target = bool(enabled)
         try:
-            autostart.set_enabled(bool(enabled))
+            autostart.set_enabled(target)
         except OSError as exc:
             logger.exception("设置开机自启失败")
             self.error.emit(f"设置开机自启失败：{exc}")
+            self.autostart_changed.emit(autostart.is_enabled())
             return False
-        self.autostart_changed.emit(bool(enabled))
-        return True
+        actual = autostart.is_enabled()
+        if actual == target:
+            self._config.autostart = target
+            self._save()
+            self.config_changed.emit(self._config)
+        else:
+            self.error.emit(
+                "设置开机自启失败：快捷方式和注册表都没有写入成功，"
+                "请检查“启动”文件夹权限。"
+            )
+        self.autostart_changed.emit(actual)
+        return actual == target
 
     def _restart_guard_if_running(self) -> None:
         if self._worker is None:
