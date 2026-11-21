@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
 
         hint = QLabel(
             "命中 ApowerREC / kapower 录屏进程时自动结束。"
-            "想先验证是否识别正确，可在 config.json 里把 guard_dry_run 设为 true。"
+            "想先验证是否识别正确，可在 config.toml 里把 guard_dry_run 设为 true。"
         )
         hint.setObjectName("hintLabel")
         hint.setWordWrap(True)

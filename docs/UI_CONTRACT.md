@@ -70,7 +70,7 @@ app.exec_()
 - `controller.autostart_enabled`：读注册表的真实状态。
 - `controller.monitoring`：守护线程是否在运行。
 - `controller.dry_run_active`：本次运行是否演练模式（命令行 `--dry-run` 优先于配置；
-  命令行覆盖不会写回 `config.json`）。
+  命令行覆盖不会写回 `config.toml`）。
 
 ## 4. 配置字段
 
@@ -100,26 +100,134 @@ config.minimize_to_tray
 改 `gyhd/ui/main_window.py` 的 `_build_ui()` 和 `_connect_signals()`，保留 `__init__` 里的
 `self._controller = controller`。后端信号已经连好，照抄 `_on_*` 槽即可。
 
-### 方式 B：Qt Designer + pyuic5
+### 方式 B：Qt Designer + pyuic5（适合慢慢调外观）
+
+#### B1. 安装 Qt Designer
+
+PyQt5 的 wheel 只带运行时，不含 Designer。推荐只装 Qt 工具包，避免把 PyQt5 降级：
 
 ```powershell
-pyuic5 main_window.ui -o gyhd/ui/main_window_ui.py
+pip install "qt5-applications==5.15.2.2.3" --no-deps -i https://pypi.tuna.tsinghua.edu.cn/simple
+python -c "import qt5_applications, pathlib; print(pathlib.Path(qt5_applications.__file__).parent / 'Qt' / 'bin' / 'designer.exe')"
 ```
 
-然后：
+把打印出来的 `designer.exe` 双击打开。如果 `qt5-applications` 装不上，再用
+`pip install pyqt5-tools`（它可能把 PyQt5 降到 5.15.9，装完执行
+`pip install --force-reinstall "PyQt5==5.15.11"` 升回来）。Designer 一般在：
+
+```
+venv\Lib\site-packages\qt5_applications\Qt\bin\designer.exe
+```
+
+#### B2. 新建/保存 .ui
+
+Designer → File → New → Main Window → Create。先放一个 `QWidget` 作为 central widget，
+或者直接用 Designer 生成的 `centralwidget`。保存为：
+
+```
+gyhd/ui/main_window.ui
+```
+
+#### B3. 拖控件、设 objectName
+
+左侧 Widget Box 拖 `QLabel` / `QLineEdit` / `QPushButton` / `QCheckBox` / `QGroupBox` /
+`QPlainTextEdit`；选中同级控件后用 Layout → Lay Out Horizontally/Vertically 排布局。
+右侧 Property Editor 里改 `objectName`（不是 `text`），推荐名字见下面 B7。
+
+#### B4. 生成 Python
+
+在项目根目录执行（用相对路径，生成文件的头注释才不会写死绝对路径）：
+
+```powershell
+python -m PyQt5.uic.pyuic gyhd\ui\main_window.ui -o gyhd\ui\main_window_ui.py
+```
+
+也可以直接用 PyQt5 自带的 `pyuic5.exe`：
+
+```powershell
+.\venv\Scripts\pyuic5.exe gyhd\ui\main_window.ui -o gyhd\ui\main_window_ui.py
+```
+
+加 `-x` 会多生成一个可单独预览的 `__main__` 块。**不要手改 `main_window_ui.py`**，
+下次重新生成会覆盖；要改就改 `.ui`。
+
+#### B5. 接线
+
+当前 `gyhd/ui/main_window.py` 是手写界面。用 Designer 时，把它替换成适配层，
+但保留 `MainWindow(controller)`、`show_and_raise()`、`set_tray_available()`、
+`closeEvent()` 这几个 `main.py` / 托盘会调用的接口：
 
 ```python
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow
+
 from .main_window_ui import Ui_MainWindow
+
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, controller, parent=None):
         super().__init__(parent)
         self.setupUi(self)
         self._controller = controller
-        # 连接控件信号到 controller / 本地槽
+        self._can_minimize_to_tray = False
+
+        self.btn_browse.clicked.connect(self._browse)
+        self.btn_change.clicked.connect(controller.change_wallpaper)
+        self.check_guard.toggled.connect(controller.set_guard_enabled)
+        self.check_only_show.toggled.connect(
+            controller.set_kill_only_during_slideshow
+        )
+        self.check_autostart.toggled.connect(controller.set_autostart)
+        self.btn_quit.clicked.connect(QApplication.quit)
+
+        controller.wallpaper_changed.connect(
+            lambda path: self.plainText_log.appendPlainText(path)
+        )
+        controller.slideshow_changed.connect(self._on_slideshow)
+
+    def _on_slideshow(self, active: bool) -> None:
+        self.label_slideshow.setText("正在放映" if active else "未检测到放映")
+
+    def _browse(self) -> None:
+        folder = QFileDialog.getExistingDirectory(self, "选择壁纸文件夹")
+        if folder:
+            self._controller.set_wallpaper_folder(folder)
+
+    def show_and_raise(self) -> None:
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def set_tray_available(self, available: bool) -> None:
+        self._can_minimize_to_tray = bool(available)
+
+    def closeEvent(self, event) -> None:
+        if self._can_minimize_to_tray and self._controller.config.minimize_to_tray:
+            event.ignore()
+            self.hide()
+            return
+        event.accept()
+        QApplication.quit()
 ```
 
-建议给控件起这些 objectName（不是后端强制，只是方便对应）：
+注意：
+
+- 从 config 回填勾选框时先 `widget.blockSignals(True)`，设完再放开，否则 `setChecked()`
+  会触发 `toggled`，把配置又写一遍。
+- `set_autostart` 返回 `bool`，失败时要恢复勾选状态。
+- 上面只是最小示例，日志、错误提示、拦截次数可以照 `main_window.py` 里的 `_on_*` 槽补。
+
+#### B6. 预览与排错
+
+- Designer 内 `Ctrl+R` 预览。
+- 生成后运行 `python main.py`；如果报 `AttributeError: 'MainWindow' object has no attribute 'btn_browse'`，
+  说明 Designer 里的 objectName 和代码不一致。
+- 如果报 `ModuleNotFoundError: No module named 'main_window_ui'`，检查 `pyuic5` 输出路径和
+  `from .main_window_ui import` 的相对导入。
+- 控件拖不进布局时，先选中容器，再点 Layout 按钮；不要用绝对坐标。
+- 自定义字体不会跟着仓库走，换机器会回退；要么用系统字体，要么用
+  `QFontDatabase.addApplicationFont()` 打包字体。
+
+#### B7. 推荐 objectName
 
 | 控件 | 建议 objectName | 连接 |
 | --- | --- | --- |

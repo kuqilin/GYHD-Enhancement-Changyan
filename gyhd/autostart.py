@@ -2,7 +2,7 @@
 """开机自启：写入 HKCU 的 Run 项，无需管理员权限。
 
 旧项目用启动文件夹快捷方式；这里用注册表 Run 项，命令里的路径全部是绝对路径，
-因此不会重蹈“开机时 CWD 是 System32，读不到 config.json”的覆辙。
+因此不会重蹈“开机时 CWD 是 System32，读不到 config.toml”的覆辙。
 """
 
 from __future__ import annotations

@@ -21,8 +21,11 @@ runtime/
 
 # ---- 运行时数据 ----
 *.log
+config.toml
 config.json
-config.json.broken-*
+config.*.broken-*
+config.json.migrated-*
+config.toml.tmp
 
 # ---- 编辑器 / 系统 ----
 .vscode/

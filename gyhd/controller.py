@@ -53,7 +53,7 @@ class AppController(QObject):
         self._started = False
         self._last_guard_error = ""
         self._last_kill_error = ""
-        # 命令行 --dry-run 只影响本次运行，绝不写回 config.json。
+        # 命令行 --dry-run 只影响本次运行，绝不写回 config.toml。
         self._dry_run_override = bool(dry_run_override)
 
     @property

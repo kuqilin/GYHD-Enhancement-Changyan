@@ -77,7 +77,7 @@ Preparing for Apower
 ## 环境要求
 
 - Windows 10 / 11
-- Python 3.10+（开发和验证用的是 3.15.2；PyQt5 5.15.11 的 wheel 是 abi3，兼容 3.8+）
+- Python 3.10+（3.11+ 用标准库 `tomllib`；3.10 会从 requirements 安装 `tomli`）
 - PyQt5 >= 5.15.11
 - 不需要 pywin32，进程/窗口/壁纸全部用 `ctypes` + `winreg` 调 Win32 API
 
@@ -119,27 +119,31 @@ python main.py --dry-run       # 演练模式：只记录，不结束录屏进�
 python main.py --debug         # 控制台 + 文件日志
 ```
 
-`--dry-run` 只影响本次进程，退出时不会保存；持久开关是 `config.json` 里的 `guard_dry_run`。
+`--dry-run` 只影响本次进程，退出时不会保存；持久开关是 `config.toml` 里的 `guard_dry_run`。
 
 如果当前目录不是项目根目录，建议用 `python D:\path\to\GYHD-Enhancement-Changyan\main.py`，
 配置路径仍然是 `%LOCALAPPDATA%`，不会因为 CWD 不同而读错。
 
 ## 配置
 
-配置文件：`%LOCALAPPDATA%\GYHD-Enhancement-Changyan\config.json`
+配置文件：`%LOCALAPPDATA%\GYHD-Enhancement-Changyan\config.toml`
 
-```json
-{
-    "schema_version": 1,
-    "wallpaper_folder": "D:\\花都校区定制壁纸",
-    "change_wallpaper_on_start": true,
-    "guard_enabled": true,
-    "guard_interval_ms": 500,
-    "kill_only_during_slideshow": true,
-    "guard_dry_run": false,
-    "minimize_to_tray": true
-}
+```toml
+schema_version = 1
+wallpaper_folder = 'D:\花都校区定制壁纸'
+change_wallpaper_on_start = true
+guard_enabled = true
+guard_interval_ms = 500
+kill_only_during_slideshow = true
+guard_dry_run = false
+minimize_to_tray = true
 ```
+
+路径建议用单引号（TOML literal string），这样 Windows 反斜杠不需要写成 `\\`。
+
+> 从 0.1.2 起配置格式是 TOML。第一次启动时如果只找到旧的 `config.json`，
+> 会自动迁移成 `config.toml`，并把旧文件备份为 `config.json.migrated-<时间戳>`，
+> 原来的壁纸路径和开关都会保留。
 
 | 字段 | 说明 |
 | --- | --- |
@@ -173,8 +177,9 @@ python tools/diagnose_wps.py
 
 1. **直接改 `MainWindow`**：保留 `MainWindow(controller)` 构造签名，以及
    `show_and_raise()` / `set_tray_available(bool)` / `closeEvent`，其他随便重写。
-2. **用 Qt Designer**：新建 `main_window.ui`，用 `pyuic5 main_window.ui -o main_window_ui.py` 生成，
-   再在 `MainWindow.__init__` 里 `self.setupUi(self)`。控件的信号仍然连到 `controller` 的方法。
+2. **用 Qt Designer**：新建 `gyhd/ui/main_window.ui`，用 `python -m PyQt5.uic.pyuic ...` 生成，
+   再在 `MainWindow.__init__` 里 `self.setupUi(self)`。完整步骤见
+   [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md) 的“Qt Designer 详细步骤”。
 3. **换掉托盘**：`gyhd/ui/tray.py` 可以整体替换，只要 `main.py` 还能拿到
    `tray.available` 和 `tray.show()` 即可。
 
@@ -191,9 +196,10 @@ python tools/diagnose_wps.py
 python -m unittest discover -s tests -v
 ```
 
-当前 43 个用例，覆盖：
+当前 48 个用例，覆盖：
 
-- 配置默认值、往返读写、损坏备份、间隔限制、未知字段兼容
+- 配置默认值、TOML 往返、损坏备份、JSON→TOML 迁移、间隔限制、未知字段兼容
+- 命令行 `--dry-run` 不写回配置的回归测试
 - 图片枚举/排序、避开当前壁纸、系统调用失败
 - 放映窗口判定：英文/中文标题、全屏兜底、编辑器窗口不误判、文件名含“放映”不误判
 - 录屏进程判定：WPS 插件路径、独立安装的 ApowerREC、同目录 helper/ffmpeg、WPS 自身不误判
@@ -252,7 +258,7 @@ GYHD-Enhancement-Changyan/
 │  ├─ single_instance.py       # CreateMutexW
 │  ├─ logging_setup.py
 │  └─ ui/                      # 占位界面 + 托盘（你来改）
-├─ tests/                      # 41 个 unittest
+├─ tests/                      # 48 个 unittest
 ├─ tools/diagnose_wps.py       # 只读诊断：窗口/录屏进程
 ├─ docs/UI_CONTRACT.md         # 界面后端契约
 ├─ assets/GY_1080x1080.ico
@@ -291,10 +297,14 @@ WPS 更新可能改窗口标题、窗口类或录屏插件名。出现“识别�
 不在放映时录屏不受影响。放映期间如果你确实要录，先取消勾选“启用后台守护”。
 
 **Q：没加 `--dry-run`，日志还是显示“演练模式”？**
-0.1.0 有一个 bug：`--dry-run` 在退出时被 `shutdown()` 保存进了 `config.json`。
+0.1.0 有一个 bug：`--dry-run` 在退出时被 `shutdown()` 保存进了配置。
 0.1.1 已修好，并且同一 PID 不再每 500 ms 刷一行日志。把
-`%LOCALAPPDATA%\GYHD-Enhancement-Changyan\config.json` 里的 `guard_dry_run` 改成
-`false`（或删掉该字段，默认就是 false）即可。
+`%LOCALAPPDATA%\GYHD-Enhancement-Changyan\config.toml` 里的 `guard_dry_run` 改成
+`false` 即可。
+
+**Q：旧的 config.json 还在，会读哪个？**
+优先读 `config.toml`。只有找不到 TOML 时才会读 `config.json` 并自动迁移，
+迁移成功后旧文件会改名成 `config.json.migrated-<时间戳>`。
 
 **Q：WPS 以管理员身份运行，守护杀不掉？**
 Windows 不允许低完整性进程结束高完整性进程。让本程序和 WPS 使用相同权限运行；

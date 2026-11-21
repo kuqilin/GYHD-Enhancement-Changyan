@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""回归测试：命令行 --dry-run 不能被 shutdown() 写进 config.json。"""
+"""回归测试：命令行 --dry-run 不能被 shutdown() 写进 config.toml。"""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class DryRunPersistenceTest(unittest.TestCase):
         self.dir = tmp_root / f"dryrun-{os.getpid()}-{time.time_ns()}"
         self.dir.mkdir()
         self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
-        self.path = self.dir / "config.json"
+        self.path = self.dir / "config.toml"
         self.store = ConfigStore(self.path)
         self.store.save(Config(guard_dry_run=False))
         self.app = QCoreApplication.instance() or QCoreApplication([])

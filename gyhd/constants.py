@@ -10,7 +10,7 @@ from pathlib import Path
 APP_ID = "GYHD-Enhancement-Changyan"
 APP_NAME = "GYHD 增强工具"
 APP_NAME_FULL = "GYHD 增强工具 · 长焰"
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.1.2"
 ORG_NAME = "kuqilin"
 GITHUB_URL = "https://github.com/kuqilin/GYHD-Enhancement-Changyan"
 
@@ -42,7 +42,7 @@ def app_data_dir() -> Path:
 
 
 def config_path() -> Path:
-    return app_data_dir() / "config.json"
+    return app_data_dir() / "config.toml"
 
 
 def log_dir() -> Path:
