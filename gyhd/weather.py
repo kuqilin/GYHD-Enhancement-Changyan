@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -30,7 +31,9 @@ API_URL = "https://api.open-meteo.com/v1/forecast"
 # 国内备用接口，返回 low/high 字符串；Open-Meteo 失败时再试。
 FALLBACK_API_URL = "https://api.vvhan.com/api/weather"
 REQUEST_TIMEOUT = 2.5
+FAILURE_COOLDOWN_SECONDS = 600
 _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
+_last_failure_at: float | None = None
 
 
 @dataclass(frozen=True)
@@ -177,13 +180,23 @@ def _write_cache(temperature: Temperature) -> None:
 
 def get_today_temperature(*, force: bool = False) -> Temperature | None:
     """优先读当天缓存；没有缓存或 force=True 时请求网络。"""
+    global _last_failure_at
+
     today = date.today().isoformat()
     if not force:
         cached = _read_cache()
         if cached is not None and cached[0] == today:
             return cached[1]
+        if (
+            _last_failure_at is not None
+            and time.monotonic() - _last_failure_at < FAILURE_COOLDOWN_SECONDS
+        ):
+            return None
 
     temperature = fetch_today_temperature()
-    if temperature is not None:
+    if temperature is None:
+        _last_failure_at = time.monotonic()
+    else:
+        _last_failure_at = None
         _write_cache(temperature)
     return temperature
