@@ -74,7 +74,7 @@ app.exec_()
 只读属性：
 
 - `controller.config`：当前 `Config`，**不要直接改字段**，用上面的 setter 才会保存并通知。
-- `controller.autostart_enabled`：读注册表的真实状态。
+- `controller.autostart_enabled`：读启动文件夹快捷方式（以及旧 Run 项）的真实状态。
 - `controller.monitoring`：守护线程是否在运行。
 - `controller.dry_run_active`：本次运行是否演练模式（命令行 `--dry-run` 优先于配置；
   命令行覆盖不会写回 `config.toml`）。
