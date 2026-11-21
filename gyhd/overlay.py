@@ -84,30 +84,41 @@ def render_wallpaper(
         painter.drawImage(0, 0, image)
 
         title, temp_text = build_text(stage, exam, days, temperature)
-        base = max(20, min(64, int(canvas.width() * 0.022)))
-        title_font = QFont("Microsoft YaHei UI")
-        title_font.setPixelSize(base)
-        title_font.setBold(True)
-        temp_font = QFont("Microsoft YaHei UI")
-        temp_font.setPixelSize(max(16, int(base * 0.82)))
+        margin_x = max(20, int(canvas.width() * 0.03))
+        margin_y = max(18, int(canvas.height() * 0.03))
+        max_box_width = max(40, canvas.width() - margin_x * 2)
+        max_box_height = max(40, canvas.height() - margin_y * 2)
 
-        title_metrics = QFontMetrics(title_font)
-        temp_metrics = QFontMetrics(temp_font)
-        line_gap = max(6, int(base * 0.22))
-        widths = [title_metrics.horizontalAdvance(title)]
-        if temp_text:
-            widths.append(temp_metrics.horizontalAdvance(temp_text))
+        base = max(18, min(64, int(canvas.width() * 0.022)))
+        while True:
+            title_font = QFont("Microsoft YaHei UI")
+            title_font.setPixelSize(base)
+            title_font.setBold(True)
+            temp_font = QFont("Microsoft YaHei UI")
+            temp_font.setPixelSize(max(12, int(base * 0.82)))
 
-        padding_x = max(18, int(base * 0.6))
-        padding_y = max(12, int(base * 0.35))
-        box_width = max(widths) + padding_x * 2
-        box_height = padding_y * 2 + title_metrics.height()
-        if temp_text:
-            box_height += line_gap + temp_metrics.height()
+            title_metrics = QFontMetrics(title_font)
+            temp_metrics = QFontMetrics(temp_font)
+            line_gap = max(4, int(base * 0.22))
+            widths = [title_metrics.horizontalAdvance(title)]
+            if temp_text:
+                widths.append(temp_metrics.horizontalAdvance(temp_text))
 
-        margin_x = max(24, int(canvas.width() * 0.03))
-        margin_y = max(24, int(canvas.height() * 0.035))
-        x = max(margin_x, canvas.width() - margin_x - box_width)
+            padding_x = max(14, int(base * 0.6))
+            padding_y = max(10, int(base * 0.35))
+            box_width = max(widths) + padding_x * 2
+            box_height = padding_y * 2 + title_metrics.height()
+            if temp_text:
+                box_height += line_gap + temp_metrics.height()
+
+            if (
+                box_width <= max_box_width and box_height <= max_box_height
+            ) or base <= 12:
+                break
+            base = max(12, int(base * 0.88))
+
+        # 顶部居中：不贴右边缘，也不会因为字太长跑出屏幕。
+        x = max(0, (canvas.width() - box_width) // 2)
         y = margin_y
 
         painter.setPen(Qt.NoPen)
