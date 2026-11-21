@@ -10,13 +10,24 @@ from pathlib import Path
 APP_ID = "GYHD-Enhancement-Changyan"
 APP_NAME = "花都校区畅言增强工具"
 APP_NAME_FULL = "花都校区畅言增强工具"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 ORG_NAME = "kuqilin"
 GITHUB_URL = "https://github.com/kuqilin/GYHD-Enhancement-Changyan"
 
 DEFAULT_WALLPAPER_FOLDER = r"D:\花都校区定制壁纸"
 DEFAULT_INSTALL_DIR = r"D:\GYHD-Enhancement-Changyan"
 SUPPORTED_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".gif")
+
+STAGES = ("高一", "高二", "高三", "初一", "初二", "初三")
+HIGH_SCHOOL_STAGES = frozenset({"高一", "高二", "高三"})
+MIDDLE_SCHOOL_STAGES = frozenset({"初一", "初二", "初三"})
+DEFAULT_STAGE = "高三"
+
+# 广东广雅中学（花都校区）附近；换城市改这里即可。
+WEATHER_LATITUDE = 23.39
+WEATHER_LONGITUDE = 113.22
+WEATHER_TIMEZONE = "Asia/Shanghai"
+WEATHER_CITY = "广州"
 
 # WPS 演示 / WPS Office 主程序。WPS 12 起，放映窗口实际由 wpp.exe 创建，
 # 但也见过 wps.exe 承载放映窗口的版本，所以两个都接受。

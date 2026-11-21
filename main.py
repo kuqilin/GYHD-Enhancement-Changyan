@@ -22,7 +22,7 @@ import sys
 
 try:
     from PyQt5.QtCore import Qt
-    from PyQt5.QtGui import QIcon
+    from PyQt5.QtGui import QGuiApplication, QIcon
     from PyQt5.QtWidgets import QApplication, QMessageBox
 except ImportError:
     print(
@@ -40,7 +40,8 @@ from gyhd.logging_setup import setup_logging
 from gyhd.single_instance import SingleInstance
 from gyhd.ui.main_window import MainWindow
 from gyhd.ui.tray import TrayIcon
-from gyhd.wallpaper import WallpaperError, change_to_random
+from gyhd.wallpaper import WallpaperError
+from gyhd.wallpaper_service import perform_wallpaper_change
 
 logger = logging.getLogger(__name__)
 
@@ -84,15 +85,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _wallpaper_only() -> int:
-    """不创建 QApplication，只换一张壁纸后退出。"""
+    """不创建主窗口，只换一张壁纸后退出。"""
     store = ConfigStore()
     try:
         config = store.load()
     except Exception:  # noqa: BLE001
         logger.exception("读取配置失败，使用默认配置换壁纸")
         config = Config().normalized()
+
+    # 文字绘制需要 QGuiApplication 的字体引擎。
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication([sys.argv[0]])
+
     try:
-        path = change_to_random(config.wallpaper_folder)
+        path = perform_wallpaper_change(config)
     except WallpaperError as exc:
         logger.error("只换壁纸失败：%s", exc)
         return 1

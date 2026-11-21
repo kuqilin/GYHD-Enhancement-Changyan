@@ -11,7 +11,6 @@ import random
 import winreg
 from pathlib import Path
 from typing import Callable, Sequence
-
 from .constants import SUPPORTED_IMAGE_EXTS
 
 logger = logging.getLogger(__name__)
@@ -135,10 +134,12 @@ def change_to_random(
     spi: SpiFunction | None = None,
     rng: random.Random | None = None,
     avoid_current: bool = True,
+    transform: Callable[[Path], Path] | None = None,
 ) -> Path:
     images = list_images(folder)
     if not images:
         raise WallpaperError(f"文件夹不存在或里面没有支持的图片：{folder}")
     current = current_wallpaper() if avoid_current else None
     chosen = pick_random_image(images, current=current, rng=rng)
-    return set_wallpaper(chosen, spi=spi)
+    target = transform(chosen) if transform is not None else chosen
+    return set_wallpaper(target, spi=spi)

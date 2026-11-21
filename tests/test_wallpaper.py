@@ -106,6 +106,25 @@ class WallpaperTest(unittest.TestCase):
         with self.assertRaises(WallpaperError):
             change_to_random(self.root / "missing", spi=lambda p, f: True)
 
+    def test_change_to_random_transform(self) -> None:
+        overlay = self.root / "overlay.jpg"
+        overlay.write_bytes(b"overlay")
+        calls: list[str] = []
+
+        def fake_spi(path: str, flags: int) -> bool:
+            calls.append(path)
+            return True
+
+        with mock.patch("gyhd.wallpaper.current_wallpaper", return_value=""):
+            result = change_to_random(
+                self.root,
+                spi=fake_spi,
+                rng=random.Random(2),
+                transform=lambda source: overlay,
+            )
+        self.assertEqual(result, overlay)
+        self.assertEqual(calls, [str(overlay)])
+
 
 if __name__ == "__main__":
     unittest.main()

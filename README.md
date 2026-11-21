@@ -11,15 +11,42 @@
 ## 功能
 
 - 随机壁纸：支持 `.jpg` `.jpeg` `.png` `.bmp` `.gif`，默认避开当前壁纸，避免连续两次同一张
+- 壁纸倒计时：选择学段（高一～高三 / 初一～初三），自动计算距离高考（6.7）或中考（6.30）天数
+- 当天气温：在壁纸上写 `xx℃~xx℃`，数据来自 Open-Meteo，失败时只省略气温
+- 源图不改：文字画在生成的副本上，输出到 `%LOCALAPPDATA%\...\wallpapers`
 - 壁纸文件夹可在界面里选择，配置保存在 `%LOCALAPPDATA%`，不再依赖当前工作目录
 - 自动部署：第一次从别处运行时，复制到 `D:\GYHD-Enhancement-Changyan` 并自动重启
 - 开机自启：启动时检查“启动”文件夹，没有快捷方式就自动创建，不需要管理员权限
-- 启动参数：`--startup` 不显示主界面，只换壁纸并进入后台守护；`--wallpaper-only` 只换壁纸后退出- WPS 放映检测：识别全屏放映窗口，而不是简单地“WPS 在运行就杀”
+- 启动参数：`--startup` 不显示主界面，只换壁纸并进入后台守护；`--wallpaper-only` 只换壁纸后退出
+- WPS 放映检测：识别全屏放映窗口，而不是简单地“WPS 在运行就杀”
 - 录屏拦截：默认**只在 PPT 全屏放映时**结束 `ApowerREC.exe` 及其同目录辅助进程
 - 演练模式：只记录“本应结束哪个进程”，不真的杀，便于在真机上验证识别是否正确
 - 系统托盘：关闭窗口可最小化到托盘，托盘菜单可暂停守护、立即换壁纸
 - 单实例：重复启动不会产生两个守护线程
 - 文件日志：`%LOCALAPPDATA%\GYHD-Enhancement-Changyan\logs\app.log`
+
+## 壁纸上的倒计时和气温
+
+选中“学段”后，每次换壁纸时：
+
+1. 高中三个学段数到各自的高考年份（6 月 7 日）：高三最近一次，高二加一年，高一加两年；
+   初中同理，数到 6 月 30 日（中考）；
+2. 考试当天显示“今天高考/中考”，过了考试日自动顺延到下一次；
+3. 从 Open-Meteo 取当天最低/最高气温，格式固定为 `15℃~25℃`；
+4. 用 Qt 把文字画在源图的**副本**上，源文件只读，不会被覆盖。
+
+壁纸副本保存在：
+
+```
+%LOCALAPPDATA%\GYHD-Enhancement-Changyan\wallpapers\wallpaper-*.jpg
+```
+
+只保留最近 5 张，旧的自动清理。位置在右下角、任务栏上方，半透明黑底白字，不挡桌面图标。
+天气接口失败（断网、超时、证书问题）时只印倒计时，不影响换壁纸。
+Open-Meteo 失败会再试 vvhan 的国内接口（城市名由 `WEATHER_CITY` 控制）。
+
+坐标默认是广州花都，换城市改 `gyhd/constants.py` 的
+`WEATHER_LATITUDE` / `WEATHER_LONGITUDE`，备用接口的城市名 `WEATHER_CITY` 也一起改。
 
 ## 我们是怎么找到“那个录屏程序”的
 
@@ -157,6 +184,8 @@ python main.py --debug          # 控制台 + 文件日志
 ```toml
 schema_version = 1
 wallpaper_folder = 'D:\花都校区定制壁纸'
+stage = '高三'
+weather_enabled = true
 change_wallpaper_on_start = true
 guard_enabled = true
 guard_interval_ms = 500
@@ -175,6 +204,8 @@ autostart = true
 | 字段 | 说明 |
 | --- | --- |
 | `wallpaper_folder` | 壁纸文件夹，必须存在；不存在时程序只记日志，不会静默改回默认值 |
+| `stage` | 学段：`高一` `高二` `高三` `初一` `初二` `初三`；高三/初三数最近一次考试，高二/初二 +1 年，高一/初一 +2 年 |
+| `weather_enabled` | 是否请求 Open-Meteo 取当天气温；`false` 时壁纸只印倒计时 |
 | `change_wallpaper_on_start` | 启动时自动换一张 |
 | `guard_enabled` | 是否启动后台 WPS 守护 |
 | `guard_interval_ms` | 轮询间隔，限制在 200–5000 ms，默认 500 |
@@ -223,12 +254,15 @@ python tools/diagnose_wps.py
 python -m unittest discover -s tests -v
 ```
 
-当前 58 个用例，覆盖：
+当前 76 个用例，覆盖：
 
 - 配置默认值、TOML 往返、损坏备份、JSON→TOML 迁移、间隔限制、未知字段兼容
 - 命令行 `--dry-run` 不写回配置的回归测试
 - 部署复制：忽略 tests/runtime/.git/config，识别已安装目录，快捷方式参数
-- 图片枚举/排序、避开当前壁纸、系统调用失败
+- 倒计时：高中/初中映射、考试当天为 0、过期顺延、非法学段兜底
+- 天气 JSON 解析（Open-Meteo + vvhan 备用）、缺字段/非法值兜底
+- 壁纸副本：不改源文件、生成尺寸正确、旧副本清理
+- 图片枚举/排序、避开当前壁纸、系统调用失败、transform 输出
 - 放映窗口判定：英文/中文标题、全屏兜底、编辑器窗口不误判、文件名含“放映”不误判
 - 录屏进程判定：WPS 插件路径、独立安装的 ApowerREC、同目录 helper/ffmpeg、WPS 自身不误判
 - 守护决策：只在放映时杀、关闭限制后随时杀、演练模式、结束失败、不杀自己
@@ -286,12 +320,16 @@ GYHD-Enhancement-Changyan/
 │  ├─ winproc.py               # ctypes：枚举进程、TerminateProcess
 │  ├─ winwindow.py             # ctypes：枚举顶层窗口、显示器矩形
 │  ├─ wallpaper.py             # ctypes：SystemParametersInfoW 设置壁纸
+│  ├─ wallpaper_service.py     # 选图 → 印字 → 设置壁纸
+│  ├─ countdown.py             # 学段 → 高考/中考倒计时
+│  ├─ weather.py               # Open-Meteo 当天气温
+│  ├─ overlay.py               # Qt 在壁纸副本上画倒计时/气温
 │  ├─ deployment.py            # 复制自身到 D 盘并重启
 │  ├─ autostart.py             # 启动文件夹 .lnk，pywin32 创建
 │  ├─ single_instance.py       # CreateMutexW
 │  ├─ logging_setup.py
 │  └─ ui/                      # 占位界面 + 托盘（你来改）
-├─ tests/                      # 58 个 unittest
+├─ tests/                      # 76 个 unittest
 ├─ tools/diagnose_wps.py       # 只读诊断：窗口/录屏进程
 ├─ docs/UI_CONTRACT.md         # 界面后端契约
 ├─ assets/GY_1080x1080.ico
@@ -381,6 +419,10 @@ Windows 不允许低完整性进程结束高完整性进程。让本程序和 WP
 - 自动部署只在 `D:\GYHD-Enhancement-Changyan` 缺失时复制；D 盘已有旧版本不会自动覆盖，
   需要手动删掉旧目录再运行，或用 `GYHD_INSTALL_DIR` 换一个目标目录。
 - 从源码运行时，D 盘副本仍依赖当前 Python 环境；打包成 exe 后自启才完全独立。
+- 天气坐标固定为广州花都；换城市改 `WEATHER_LATITUDE/LONGITUDE` 和 `WEATHER_CITY`。
+  断网或接口超时时壁纸只印倒计时，不印气温。
+- 倒计时按学段推算考试年份（高三最近一次，高二 +1 年，高一 +2 年；初中同理），
+  不读取学生实际入学信息；考试当天为 0 天。
 - 放映判定基于 WPS 12.1 的实测特征，WPS 大版本升级后可能需要更新关键字（见“维护与适配”）。
 - 录屏拦截是“启动后结束”，不是内核级阻止；对极短的录制仍可能截到开头几帧。
 - 多显示器时，只要任意一个 WPS 放映窗口命中，就认为在放映；没有区分“演讲者视图”和“观众视图”。

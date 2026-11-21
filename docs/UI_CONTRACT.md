@@ -65,6 +65,8 @@ app.exec_()
 | `change_wallpaper()` | `str \| None` | 立即随机换一张；失败返回 `None` 并发出 `wallpaper_failed` |
 | `set_wallpaper_folder(path)` | `bool` | 只保存路径，不立即换壁纸；目录不存在返回 `False` |
 | `set_change_wallpaper_on_start(bool)` | `None` | 保存配置 |
+| `set_stage(str)` | `None` | 学段：`高一`～`高三` / `初一`～`初三`；非法值发 `error` |
+| `set_weather_enabled(bool)` | `None` | 是否在壁纸上印当天气温 |
 | `set_minimize_to_tray(bool)` | `None` | 保存配置 |
 | `set_guard_enabled(bool)` | `None` | 保存配置并启动/停止守护线程 |
 | `set_kill_only_during_slideshow(bool)` | `None` | 保存配置；守护运行中会重启线程生效 |
@@ -85,6 +87,8 @@ app.exec_()
 
 ```python
 config.wallpaper_folder
+config.stage
+config.weather_enabled
 config.change_wallpaper_on_start
 config.guard_enabled
 config.kill_only_during_slideshow
@@ -240,6 +244,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 | 控件 | 建议 objectName | 连接 |
 | --- | --- | --- |
 | 壁纸路径 | `lineEdit_path` | `controller.config.wallpaper_folder` |
+| 学段选择 | `combo_stage` | `controller.set_stage` |
+| 倒计时显示 | `label_countdown` | 按 `controller.config.stage` 调 `gyhd.countdown.exam_info` |
 | 浏览按钮 | `btn_browse` | `QFileDialog.getExistingDirectory` + `set_wallpaper_folder` |
 | 立即更换 | `btn_change` | `controller.change_wallpaper` |
 | 守护开关 | `check_guard` | `controller.set_guard_enabled` |
@@ -258,6 +264,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 │                                              │
 │  ┌ 桌面壁纸 ──────────────────────────────┐  │
 │  │ [D:\花都校区定制壁纸        ] [浏览] [换]│  │
+│  │ 学段 [高三 ▼]  距离高考 197 天           │  │
 │  │ 上次更换：23:10   D:\...\01.jpg          │  │
 │  └─────────────────────────────────────────┘  │
 │  ┌ WPS 放映守护 ──────────────────────────┐  │

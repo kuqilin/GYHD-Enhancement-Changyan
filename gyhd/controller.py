@@ -16,8 +16,10 @@ from PyQt5.QtCore import QObject, QTimer, pyqtSignal
 
 from . import autostart
 from .config import Config, ConfigStore
+from .constants import STAGES
 from .guard_worker import GuardWorker
-from .wallpaper import WallpaperError, change_to_random
+from .wallpaper import WallpaperError
+from .wallpaper_service import perform_wallpaper_change
 from .wps_guard import RecorderKill, WpsGuard
 
 logger = logging.getLogger(__name__)
@@ -104,7 +106,7 @@ class AppController(QObject):
 
     def change_wallpaper(self) -> str | None:
         try:
-            path = change_to_random(self._config.wallpaper_folder)
+            path = perform_wallpaper_change(self._config)
         except WallpaperError as exc:
             logger.warning("更换壁纸失败：%s", exc)
             self.wallpaper_failed.emit(str(exc))
@@ -116,6 +118,19 @@ class AppController(QObject):
         logger.info("更换壁纸成功：%s", path)
         self.wallpaper_changed.emit(str(path))
         return str(path)
+
+    def set_stage(self, stage: str) -> None:
+        if stage not in STAGES:
+            self.error.emit(f"未知的学段：{stage}")
+            return
+        self._config.stage = stage
+        self._save()
+        self.config_changed.emit(self._config)
+
+    def set_weather_enabled(self, enabled: bool) -> None:
+        self._config.weather_enabled = bool(enabled)
+        self._save()
+        self.config_changed.emit(self._config)
 
     def set_wallpaper_folder(self, folder: str) -> bool:
         candidate = Path(str(folder)).expanduser()

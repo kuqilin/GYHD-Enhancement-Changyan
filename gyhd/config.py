@@ -23,7 +23,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib  # type: ignore[no-redef]
 
-from .constants import DEFAULT_WALLPAPER_FOLDER, config_path
+from .constants import DEFAULT_STAGE, DEFAULT_WALLPAPER_FOLDER, STAGES, config_path
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,8 @@ class Config:
     """应用配置。字段名会直接写进 TOML，改动时注意兼容旧配置。"""
 
     wallpaper_folder: str = DEFAULT_WALLPAPER_FOLDER
+    stage: str = DEFAULT_STAGE
+    weather_enabled: bool = True
     change_wallpaper_on_start: bool = True
     guard_enabled: bool = True
     guard_interval_ms: int = 500
@@ -57,6 +59,7 @@ class Config:
 
     def normalized(self) -> "Config":
         folder = (self.wallpaper_folder or "").strip() or DEFAULT_WALLPAPER_FOLDER
+        stage = self.stage if self.stage in STAGES else DEFAULT_STAGE
         try:
             interval = int(self.guard_interval_ms)
         except (TypeError, ValueError):
@@ -65,7 +68,9 @@ class Config:
         return replace(
             self,
             wallpaper_folder=folder,
+            stage=stage,
             guard_interval_ms=interval,
+            weather_enabled=bool(self.weather_enabled),
             change_wallpaper_on_start=bool(self.change_wallpaper_on_start),
             guard_enabled=bool(self.guard_enabled),
             kill_only_during_slideshow=bool(self.kill_only_during_slideshow),
@@ -78,6 +83,8 @@ class Config:
         return {
             "schema_version": SCHEMA_VERSION,
             "wallpaper_folder": self.wallpaper_folder,
+            "stage": self.stage,
+            "weather_enabled": self.weather_enabled,
             "change_wallpaper_on_start": self.change_wallpaper_on_start,
             "guard_enabled": self.guard_enabled,
             "guard_interval_ms": self.guard_interval_ms,
@@ -95,6 +102,8 @@ class Config:
             wallpaper_folder=_as_str(
                 data.get("wallpaper_folder"), DEFAULT_WALLPAPER_FOLDER
             ),
+            stage=_as_str(data.get("stage"), DEFAULT_STAGE),
+            weather_enabled=_as_bool(data.get("weather_enabled"), True),
             change_wallpaper_on_start=_as_bool(
                 data.get("change_wallpaper_on_start"), True
             ),

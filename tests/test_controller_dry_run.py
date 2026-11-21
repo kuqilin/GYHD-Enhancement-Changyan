@@ -12,11 +12,8 @@ from pathlib import Path
 from gyhd.config import Config, ConfigStore
 
 try:
-    from PyQt5.QtCore import QCoreApplication
-
     from gyhd.controller import AppController
 except ImportError:  # pragma: no cover - 没有 PyQt5 时跳过
-    QCoreApplication = None
     AppController = None
 
 
@@ -31,7 +28,6 @@ class DryRunPersistenceTest(unittest.TestCase):
         self.path = self.dir / "config.toml"
         self.store = ConfigStore(self.path)
         self.store.save(Config(guard_dry_run=False))
-        self.app = QCoreApplication.instance() or QCoreApplication([])
 
     def test_cli_override_does_not_persist(self) -> None:
         controller = AppController(self.store, dry_run_override=True)

@@ -46,6 +46,8 @@ class ConfigTest(unittest.TestCase):
     def test_roundtrip(self) -> None:
         config = self.store.load()
         config.wallpaper_folder = r"D:\Pictures\Wallpapers"
+        config.stage = "初二"
+        config.weather_enabled = False
         config.guard_enabled = False
         config.guard_interval_ms = 750
         config.kill_only_during_slideshow = False
@@ -55,6 +57,8 @@ class ConfigTest(unittest.TestCase):
 
         loaded = self.store.load()
         self.assertEqual(loaded.wallpaper_folder, r"D:\Pictures\Wallpapers")
+        self.assertEqual(loaded.stage, "初二")
+        self.assertFalse(loaded.weather_enabled)
         self.assertFalse(loaded.guard_enabled)
         self.assertEqual(loaded.guard_interval_ms, 750)
         self.assertFalse(loaded.kill_only_during_slideshow)
@@ -72,12 +76,13 @@ class ConfigTest(unittest.TestCase):
 
     def test_wrong_value_type_falls_back(self) -> None:
         self.path.write_text(
-            'wallpaper_folder = 123\nguard_interval_ms = "bad"\n',
+            'wallpaper_folder = 123\nguard_interval_ms = "bad"\nstage = "大学"\n',
             encoding="utf-8",
         )
         config = self.store.load()
         self.assertEqual(config.wallpaper_folder, DEFAULT_WALLPAPER_FOLDER)
         self.assertEqual(config.guard_interval_ms, 500)
+        self.assertEqual(config.stage, "高三")
 
     def test_interval_is_clamped(self) -> None:
         self.assertEqual(

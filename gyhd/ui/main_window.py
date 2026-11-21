@@ -15,6 +15,7 @@ from PyQt5.QtCore import QTime
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
+    QComboBox,
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
@@ -28,8 +29,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ..constants import APP_NAME_FULL
+from ..constants import APP_NAME_FULL, STAGES
 from ..controller import AppController
+from ..countdown import exam_info
 from ..wallpaper import list_images
 
 
@@ -140,6 +142,18 @@ class MainWindow(QMainWindow):
         row.addWidget(self.change_btn)
         layout.addLayout(row)
 
+        stage_row = QHBoxLayout()
+        stage_row.addWidget(QLabel("学段"))
+        self.stage_combo = QComboBox()
+        self.stage_combo.setObjectName("combo_stage")
+        self.stage_combo.addItems(STAGES)
+        self.stage_combo.setMinimumWidth(96)
+        stage_row.addWidget(self.stage_combo)
+        self.countdown_label = QLabel("")
+        self.countdown_label.setObjectName("label_countdown")
+        stage_row.addWidget(self.countdown_label, 1)
+        layout.addLayout(stage_row)
+
         self.wallpaper_status = QLabel("等待第一次更换…")
         self.wallpaper_status.setWordWrap(True)
         layout.addWidget(self.wallpaper_status)
@@ -189,6 +203,7 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         self.browse_btn.clicked.connect(self._browse)
         self.change_btn.clicked.connect(self._change_wallpaper)
+        self.stage_combo.currentTextChanged.connect(self._on_stage_changed)
         self.guard_check.toggled.connect(self._controller.set_guard_enabled)
         self.only_slideshow_check.toggled.connect(
             self._controller.set_kill_only_during_slideshow
@@ -234,9 +249,20 @@ class MainWindow(QMainWindow):
             )
 
     def _change_wallpaper(self) -> None:
-        self.wallpaper_status.setText("正在更换壁纸…")
+        self.wallpaper_status.setText("正在换壁纸并写倒计时…")
         if self._controller.change_wallpaper() is None:
             self.wallpaper_status.setText("更换失败，详情见运行日志")
+
+    def _on_stage_changed(self, stage: str) -> None:
+        if stage != self._controller.config.stage:
+            self._controller.set_stage(stage)
+        self._update_countdown_label()
+
+    def _update_countdown_label(self) -> None:
+        info = exam_info(self._controller.config.stage)
+        self.countdown_label.setText(
+            f"距离{info.exam} {info.days} 天 · {info.target.isoformat()}"
+        )
 
     def _toggle_autostart(self, enabled: bool) -> None:
         if not self._controller.set_autostart(enabled):
@@ -294,6 +320,10 @@ class MainWindow(QMainWindow):
     def _sync_from_config(self) -> None:
         config = self._controller.config
         self.path_edit.setText(config.wallpaper_folder)
+        self.stage_combo.blockSignals(True)
+        self.stage_combo.setCurrentText(config.stage)
+        self.stage_combo.blockSignals(False)
+        self._update_countdown_label()
         _set_checked(self.guard_check, config.guard_enabled)
         _set_checked(self.only_slideshow_check, config.kill_only_during_slideshow)
         _set_checked(self.start_change_check, config.change_wallpaper_on_start)
