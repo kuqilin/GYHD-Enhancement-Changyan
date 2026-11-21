@@ -128,15 +128,20 @@ def render_wallpaper(
             QRectF(x, y, box_width, box_height), radius, radius
         )
 
+        # 两行都相对文字框水平居中，所以气温不会偏到左边。
+        title_width = title_metrics.horizontalAdvance(title)
+        title_x = x + (box_width - title_width) / 2
         painter.setPen(QColor(255, 255, 255, 242))
         painter.setFont(title_font)
         baseline = y + padding_y + title_metrics.ascent()
-        painter.drawText(QPointF(x + padding_x, baseline), title)
+        painter.drawText(QPointF(title_x, baseline), title)
 
         if temp_text:
+            temp_width = temp_metrics.horizontalAdvance(temp_text)
+            temp_x = x + (box_width - temp_width) / 2
             painter.setFont(temp_font)
             baseline += title_metrics.height() + line_gap
-            painter.drawText(QPointF(x + padding_x, baseline), temp_text)
+            painter.drawText(QPointF(temp_x, baseline), temp_text)
     finally:
         if painter.isActive():
             painter.end()
