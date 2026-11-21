@@ -1,0 +1,318 @@
+# -*- coding: utf-8 -*-
+"""占位主界面：能完整跑通后端，界面样式由你继续改。
+
+重做界面时只需要保留：
+    MainWindow(controller) 构造函数
+    show_and_raise() / set_tray_available(bool)
+    closeEvent 里的“最小化到托盘”逻辑（可选）
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from PyQt5.QtCore import QTime
+from PyQt5.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ..constants import APP_NAME_FULL
+from ..controller import AppController
+from ..wallpaper import list_images
+
+
+def _set_checked(widget: QCheckBox, checked: bool) -> None:
+    widget.blockSignals(True)
+    widget.setChecked(checked)
+    widget.blockSignals(False)
+
+
+class MainWindow(QMainWindow):
+    def __init__(self, controller: AppController, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._controller = controller
+        self._can_minimize_to_tray = False
+        self._tray_hint_shown = False
+        self._kill_count = 0
+
+        self.setWindowTitle(APP_NAME_FULL)
+        self.resize(680, 640)
+        self.setMinimumSize(560, 500)
+        self._build_ui()
+        self._connect_signals()
+        self._sync_from_config()
+        self._append_log("程序已启动，等待后台守护就绪…")
+
+    # ---------- UI ----------
+
+    def _build_ui(self) -> None:
+        central = QWidget(self)
+        layout = QVBoxLayout(central)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(14)
+
+        title = QLabel(APP_NAME_FULL)
+        title_font = title.font()
+        title_font.setPointSize(18)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        subtitle = QLabel("随机壁纸 · WPS 放映时自动结束误触的录屏程序")
+        subtitle.setObjectName("subtitleLabel")
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+
+        layout.addWidget(self._build_wallpaper_group())
+        layout.addWidget(self._build_guard_group())
+        layout.addWidget(self._build_behavior_group())
+
+        self.log_view = QPlainTextEdit()
+        self.log_view.setObjectName("logView")
+        self.log_view.setReadOnly(True)
+        self.log_view.setMaximumBlockCount(800)
+        self.log_view.setMinimumHeight(110)
+        self.log_view.setPlaceholderText("运行日志会显示在这里")
+        layout.addWidget(self.log_view, 1)
+
+        bottom = QHBoxLayout()
+        self.tray_btn = QPushButton("隐藏到托盘")
+        self.quit_btn = QPushButton("退出")
+        bottom.addStretch(1)
+        bottom.addWidget(self.tray_btn)
+        bottom.addWidget(self.quit_btn)
+        layout.addLayout(bottom)
+
+        self.setCentralWidget(central)
+        self.statusBar().showMessage("就绪")
+        self.setStyleSheet(
+            """
+            QGroupBox {
+                font-weight: 600;
+                border: 1px solid #d8d8d8;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding: 10px 12px 12px 12px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 12px;
+                padding: 0 4px;
+            }
+            QLineEdit, QPlainTextEdit {
+                border: 1px solid #cfcfcf;
+                border-radius: 6px;
+                padding: 5px 7px;
+                background: #ffffff;
+            }
+            QPushButton {
+                padding: 5px 14px;
+                border: 1px solid #c8c8c8;
+                border-radius: 6px;
+                background: #f7f7f7;
+            }
+            QPushButton:hover { background: #eeeeee; }
+            QLabel#subtitleLabel, QLabel#hintLabel { color: #666666; }
+            """
+        )
+
+    def _build_wallpaper_group(self) -> QGroupBox:
+        box = QGroupBox("桌面壁纸")
+        layout = QVBoxLayout(box)
+        row = QHBoxLayout()
+        self.path_edit = QLineEdit()
+        self.path_edit.setReadOnly(True)
+        self.path_edit.setPlaceholderText("尚未设置壁纸文件夹")
+        self.browse_btn = QPushButton("浏览…")
+        self.change_btn = QPushButton("立即更换")
+        row.addWidget(self.path_edit, 1)
+        row.addWidget(self.browse_btn)
+        row.addWidget(self.change_btn)
+        layout.addLayout(row)
+
+        self.wallpaper_status = QLabel("等待第一次更换…")
+        self.wallpaper_status.setWordWrap(True)
+        layout.addWidget(self.wallpaper_status)
+        return box
+
+    def _build_guard_group(self) -> QGroupBox:
+        box = QGroupBox("WPS 放映守护")
+        layout = QVBoxLayout(box)
+        self.guard_check = QCheckBox("启用后台守护")
+        self.only_slideshow_check = QCheckBox("只在 PPT 全屏放映时拦截")
+        layout.addWidget(self.guard_check)
+        layout.addWidget(self.only_slideshow_check)
+
+        self.slideshow_label = QLabel("○ 未检测到放映")
+        self.slideshow_label.setStyleSheet("color: #777777;")
+        self.kill_count_label = QLabel("已拦截录屏：0 次")
+        layout.addWidget(self.slideshow_label)
+        layout.addWidget(self.kill_count_label)
+
+        hint = QLabel(
+            "命中 ApowerREC / kapower 录屏进程时自动结束。"
+            "想先验证是否识别正确，可在 config.json 里把 guard_dry_run 设为 true。"
+        )
+        hint.setObjectName("hintLabel")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+        return box
+
+    def _build_behavior_group(self) -> QGroupBox:
+        box = QGroupBox("行为")
+        layout = QVBoxLayout(box)
+        self.start_change_check = QCheckBox("启动时自动换一张壁纸")
+        self.autostart_check = QCheckBox("开机自动启动（当前用户）")
+        self.minimize_check = QCheckBox("关闭窗口时最小化到托盘")
+        layout.addWidget(self.start_change_check)
+        layout.addWidget(self.autostart_check)
+        layout.addWidget(self.minimize_check)
+        return box
+
+    # ---------- signals ----------
+
+    def _connect_signals(self) -> None:
+        self.browse_btn.clicked.connect(self._browse)
+        self.change_btn.clicked.connect(self._change_wallpaper)
+        self.guard_check.toggled.connect(self._controller.set_guard_enabled)
+        self.only_slideshow_check.toggled.connect(
+            self._controller.set_kill_only_during_slideshow
+        )
+        self.start_change_check.toggled.connect(
+            self._controller.set_change_wallpaper_on_start
+        )
+        self.minimize_check.toggled.connect(self._controller.set_minimize_to_tray)
+        self.autostart_check.toggled.connect(self._toggle_autostart)
+        self.tray_btn.clicked.connect(self.hide)
+        self.quit_btn.clicked.connect(QApplication.quit)
+
+        self._controller.wallpaper_changed.connect(self._on_wallpaper_changed)
+        self._controller.wallpaper_failed.connect(self._on_wallpaper_failed)
+        self._controller.slideshow_changed.connect(self._on_slideshow_changed)
+        self._controller.recorder_blocked.connect(self._on_recorder_blocked)
+        self._controller.recorder_detected.connect(self._on_recorder_detected)
+        self._controller.monitoring_changed.connect(self._on_monitoring_changed)
+        self._controller.autostart_changed.connect(self._on_autostart_changed)
+        self._controller.config_changed.connect(self._on_config_changed)
+        self._controller.error.connect(self._on_error)
+
+    # ---------- actions ----------
+
+    def _browse(self) -> None:
+        start = self.path_edit.text() or str(Path.home())
+        folder = QFileDialog.getExistingDirectory(self, "选择壁纸文件夹", start)
+        if not folder:
+            return
+        if not self._controller.set_wallpaper_folder(folder):
+            QMessageBox.warning(
+                self, "保存失败", "文件夹不存在或不可访问，详情请看运行日志。"
+            )
+            return
+        self.path_edit.setText(folder)
+        count = len(list_images(folder))
+        self._append_log(f"壁纸文件夹已更新：{folder}（{count} 张图片）")
+        if count == 0:
+            QMessageBox.warning(
+                self,
+                "文件夹里没有图片",
+                "已保存路径，但里面没有 .jpg / .png / .bmp / .gif 文件。",
+            )
+
+    def _change_wallpaper(self) -> None:
+        self.wallpaper_status.setText("正在更换壁纸…")
+        if self._controller.change_wallpaper() is None:
+            self.wallpaper_status.setText("更换失败，详情见运行日志")
+
+    def _toggle_autostart(self, enabled: bool) -> None:
+        if not self._controller.set_autostart(enabled):
+            _set_checked(self.autostart_check, self._controller.autostart_enabled)
+
+    # ---------- controller slots ----------
+
+    def _on_wallpaper_changed(self, path: str) -> None:
+        stamp = QTime.currentTime().toString("HH:mm:ss")
+        self.wallpaper_status.setText(f"上次更换：{stamp}\n{path}")
+        self._append_log(f"壁纸已更换：{path}")
+
+    def _on_wallpaper_failed(self, message: str) -> None:
+        self.wallpaper_status.setText(f"更换失败：{message}")
+        self._append_log(f"更换失败：{message}")
+
+    def _on_slideshow_changed(self, active: bool) -> None:
+        if active:
+            self.slideshow_label.setText("● 正在放映 PPT，守护已生效")
+            self.slideshow_label.setStyleSheet("color: #1a7f37; font-weight: 600;")
+        else:
+            self.slideshow_label.setText("○ 未检测到放映")
+            self.slideshow_label.setStyleSheet("color: #777777;")
+
+    def _on_recorder_blocked(self, name: str, pid: int) -> None:
+        self._kill_count += 1
+        self.kill_count_label.setText(f"已拦截录屏：{self._kill_count} 次")
+        self._append_log(f"已结束录屏进程：{name} (PID {pid})")
+        self.statusBar().showMessage(f"已拦截 WPS 录屏：{name}", 5000)
+
+    def _on_recorder_detected(self, name: str, pid: int) -> None:
+        self._append_log(f"演练模式：检测到录屏进程 {name} (PID {pid})，未结束")
+
+    def _on_monitoring_changed(self, enabled: bool) -> None:
+        _set_checked(self.guard_check, enabled)
+        self.only_slideshow_check.setEnabled(enabled)
+        self._append_log("后台守护已开启" if enabled else "后台守护已暂停")
+
+    def _on_autostart_changed(self, enabled: bool) -> None:
+        _set_checked(self.autostart_check, enabled)
+        self._append_log("已开启开机自启" if enabled else "已关闭开机自启")
+
+    def _on_config_changed(self, _config) -> None:
+        self._sync_from_config()
+
+    def _on_error(self, message: str) -> None:
+        self._append_log(message)
+        self.statusBar().showMessage(message, 5000)
+
+    # ---------- helpers ----------
+
+    def _sync_from_config(self) -> None:
+        config = self._controller.config
+        self.path_edit.setText(config.wallpaper_folder)
+        _set_checked(self.guard_check, config.guard_enabled)
+        _set_checked(self.only_slideshow_check, config.kill_only_during_slideshow)
+        _set_checked(self.start_change_check, config.change_wallpaper_on_start)
+        _set_checked(self.minimize_check, config.minimize_to_tray)
+        _set_checked(self.autostart_check, self._controller.autostart_enabled)
+        self.only_slideshow_check.setEnabled(config.guard_enabled)
+
+    def _append_log(self, message: str) -> None:
+        stamp = QTime.currentTime().toString("HH:mm:ss")
+        self.log_view.appendPlainText(f"[{stamp}] {message}")
+
+    def set_tray_available(self, available: bool) -> None:
+        self._can_minimize_to_tray = bool(available)
+        self.tray_btn.setEnabled(bool(available))
+
+    def show_and_raise(self) -> None:
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def closeEvent(self, event) -> None:  # noqa: N802 - Qt 命名
+        if self._can_minimize_to_tray and self._controller.config.minimize_to_tray:
+            event.ignore()
+            self.hide()
+            if not self._tray_hint_shown:
+                self._tray_hint_shown = True
+                self.statusBar().showMessage("已隐藏到托盘，双击托盘图标可重新打开", 5000)
+            return
+        event.accept()
+        QApplication.quit()
