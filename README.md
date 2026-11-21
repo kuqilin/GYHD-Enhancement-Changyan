@@ -41,9 +41,10 @@
 %LOCALAPPDATA%\GYHD-Enhancement-Changyan\wallpapers\wallpaper-*.jpg
 ```
 
-只保留最近 5 张，旧的自动清理。位置在右下角、任务栏上方，半透明黑底白字，不挡桌面图标。
+只保留最近 5 张，旧的自动清理。位置在右上角，半透明黑底白字，不挡桌面图标和任务栏。
 天气接口失败（断网、超时、证书问题）时只印倒计时，不影响换壁纸。
 Open-Meteo 失败会再试 vvhan 的国内接口（城市名由 `WEATHER_CITY` 控制）。
+当天成功取到一次后会缓存，之后换壁纸不再请求网络；首次换壁纸可能等 1–5 秒。
 
 坐标默认是广州花都，换城市改 `gyhd/constants.py` 的
 `WEATHER_LATITUDE` / `WEATHER_LONGITUDE`，备用接口的城市名 `WEATHER_CITY` 也一起改。

@@ -96,7 +96,10 @@ def parse_vvhan(payload: object) -> Temperature | None:
     if not low_match or not high_match:
         return None
     try:
-        return _sanitize(int(round(float(low_match.group()))), int(round(float(high_match.group()))))
+        return _sanitize(
+            int(round(float(low_match.group()))),
+            int(round(float(high_match.group()))),
+        )
     except ValueError:
         return None
 

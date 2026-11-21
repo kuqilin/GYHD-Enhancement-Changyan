@@ -105,10 +105,10 @@ def render_wallpaper(
         if temp_text:
             box_height += line_gap + temp_metrics.height()
 
-        margin = max(24, int(canvas.width() * 0.03))
-        bottom_margin = max(60, int(canvas.height() * 0.08))
-        x = max(margin, canvas.width() - margin - box_width)
-        y = max(margin, canvas.height() - bottom_margin - box_height)
+        margin_x = max(24, int(canvas.width() * 0.03))
+        margin_y = max(24, int(canvas.height() * 0.035))
+        x = max(margin_x, canvas.width() - margin_x - box_width)
+        y = margin_y
 
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(0, 0, 0, 118))
