@@ -1,5 +1,8 @@
 # Qt Designer 界面清单
 
+仓库里已经有可以直接打开的
+[`gyhd/ui/main_window.ui`](main_window.ui)，用 Designer 打开就能改。
+
 这份是给 Designer 用的“最少需要什么”。按表拖控件、改 `objectName`，然后在
 `gyhd/ui/main_window.py` 里接线即可。后端只认 `AppController`，不认具体控件名；
 你换名字也行，只要适配层跟着改。
@@ -166,7 +169,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.check_only_show.toggled.connect(
             controller.set_kill_only_during_slideshow
         )
+        self.check_change_on_start.toggled.connect(
+            controller.set_change_wallpaper_on_start
+        )
         self.check_autostart.toggled.connect(self._toggle_autostart)
+        self.check_minimize_to_tray.toggled.connect(
+            controller.set_minimize_to_tray
+        )
+        self.check_weather.toggled.connect(controller.set_weather_enabled)
+        self.btn_tray.clicked.connect(self.hide)
         self.btn_quit.clicked.connect(QApplication.quit)
 
         controller.config_changed.connect(self._on_config_changed)
@@ -192,7 +203,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         _set_checked(self.check_guard, cfg.guard_enabled)
         _set_checked(self.check_only_show, cfg.kill_only_during_slideshow)
+        _set_checked(self.check_change_on_start, cfg.change_wallpaper_on_start)
+        _set_checked(self.check_minimize_to_tray, cfg.minimize_to_tray)
+        _set_checked(self.check_weather, cfg.weather_enabled)
         _set_checked(self.check_autostart, self._controller.autostart_enabled)
+        self.label_dry_run.setVisible(self._controller.dry_run_active)
         self._update_countdown()
 
     def _on_config_changed(self, _config) -> None:
