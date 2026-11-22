@@ -9,10 +9,13 @@
 
 from __future__ import annotations
 
+import webbrowser
 from pathlib import Path
 
 from PyQt5.QtCore import QTime
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
+    QAction,
     QApplication,
     QCheckBox,
     QComboBox,
@@ -30,7 +33,13 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ..constants import APP_NAME_FULL, STAGES
+from ..constants import (
+    APP_NAME_FULL,
+    APP_VERSION,
+    DEFAULT_WALLPAPER_FOLDER,
+    GITHUB_URL,
+    STAGES,
+)
 from ..controller import AppController
 from ..countdown import exam_info
 from ..wallpaper import list_images
@@ -51,8 +60,8 @@ class MainWindow(QMainWindow):
         self._kill_count = 0
 
         self.setWindowTitle(APP_NAME_FULL)
-        self.resize(760, 740)
-        self.setMinimumSize(720, 730)
+        self.resize(780, 800)
+        self.setMinimumSize(720, 780)
         self._build_ui()
         self._connect_signals()
         self._sync_from_config()
@@ -85,18 +94,25 @@ class MainWindow(QMainWindow):
         self.log_view.setReadOnly(True)
         self.log_view.setMaximumBlockCount(800)
         self.log_view.setMinimumHeight(90)
+        self.log_view.setFont(QFont("Consolas", 10))
         self.log_view.setPlaceholderText("运行日志会显示在这里")
         layout.addWidget(self.log_view, 1)
 
         bottom = QHBoxLayout()
         self.tray_btn = QPushButton("隐藏到托盘")
         self.quit_btn = QPushButton("退出")
+        for button in (self.tray_btn, self.quit_btn):
+            button.setFixedSize(120, 38)
+            font = button.font()
+            font.setPointSize(10)
+            button.setFont(font)
         bottom.addStretch(1)
         bottom.addWidget(self.tray_btn)
         bottom.addWidget(self.quit_btn)
         layout.addLayout(bottom)
 
         self.setCentralWidget(central)
+        self._build_menu()
         self.statusBar().showMessage("就绪")
         self.setStyleSheet(
             """
@@ -114,6 +130,22 @@ class MainWindow(QMainWindow):
             QLabel#subtitleLabel, QLabel#hintLabel { color: #666666; }
             """
         )
+
+    def _build_menu(self) -> None:
+        menubar = self.menuBar()
+
+        program_menu = menubar.addMenu("程序")
+        self.action_reset_folder = QAction("恢复默认", self)
+        self.action_exit_2 = QAction("退出程序", self)
+        program_menu.addAction(self.action_reset_folder)
+        program_menu.addAction(self.action_exit_2)
+
+        help_menu = menubar.addMenu("帮助")
+        self.action_website = QAction("程序地址", self)
+        self.action_about = QAction("关于程序", self)
+        help_menu.addAction(self.action_website)
+        help_menu.addSeparator()
+        help_menu.addAction(self.action_about)
 
     def _build_wallpaper_group(self) -> QGroupBox:
         box = QGroupBox("桌面壁纸")
@@ -219,6 +251,10 @@ class MainWindow(QMainWindow):
         self.autostart_check.toggled.connect(self._toggle_autostart)
         self.tray_btn.clicked.connect(self.hide)
         self.quit_btn.clicked.connect(QApplication.quit)
+        self.action_about.triggered.connect(self._show_about)
+        self.action_website.triggered.connect(self._open_website)
+        self.action_reset_folder.triggered.connect(self._reset_folder)
+        self.action_exit_2.triggered.connect(QApplication.quit)
 
         self._controller.wallpaper_changed.connect(self._on_wallpaper_changed)
         self._controller.wallpaper_failed.connect(self._on_wallpaper_failed)
@@ -256,6 +292,32 @@ class MainWindow(QMainWindow):
         self.wallpaper_status.setText("正在换壁纸并写倒计时…")
         if self._controller.change_wallpaper() is None:
             self.wallpaper_status.setText("更换失败，详情见运行日志")
+
+    def _reset_folder(self) -> None:
+        if not self._controller.set_wallpaper_folder(DEFAULT_WALLPAPER_FOLDER):
+            QMessageBox.warning(
+                self,
+                "恢复默认失败",
+                f"默认壁纸文件夹不存在：{DEFAULT_WALLPAPER_FOLDER}",
+            )
+            return
+        self.path_edit.setText(DEFAULT_WALLPAPER_FOLDER)
+        self._append_log("壁纸文件夹已恢复默认")
+
+    def _show_about(self) -> None:
+        QMessageBox.about(
+            self,
+            "关于程序",
+            f"<h3>{APP_NAME_FULL}</h3>"
+            f"<p>版本 {APP_VERSION}</p>"
+            "<p>随机壁纸 · 考试倒计时 · 当天气温 · WPS 放映录屏守护</p>"
+            "<p>作者：陈麒州（2027届）<br />"
+            "邮箱：kuqilin@88.com</p>"
+            f"<p>GitHub：{GITHUB_URL}</p>",
+        )
+
+    def _open_website(self) -> None:
+        webbrowser.open(GITHUB_URL)
 
     def _on_stage_changed(self, stage: str) -> None:
         if stage != self._controller.config.stage:

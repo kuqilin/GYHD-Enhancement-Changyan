@@ -54,9 +54,18 @@ if not startup_mode:
 | 开机自启 | `QCheckBox` | `check_autostart` | 建议 | 创建/删除启动文件夹快捷方式 |
 | 关闭到托盘 | `QCheckBox` | `check_minimize_to_tray` | 可选 | 对应 `minimize_to_tray` |
 | 显示气温 | `QCheckBox` | `check_weather` | 可选 | 对应 `weather_enabled` |
-| 日志 | `QPlainTextEdit` | `plainText_log` | 建议 | 只读，追加运行日志 |
-| 隐藏到托盘 | `QPushButton` | `btn_tray` | 可选 | `self.hide()` |
-| 退出 | `QPushButton` | `btn_quit` | 是 | `QApplication.quit()` |
+| 日志 | `QPlainTextEdit` | `plainText_log` | 建议 | 只读，追加运行日志；字体用 Consolas 10 |
+| 隐藏到托盘 | `QPushButton` | `btn_tray` | 可选 | 120×38，`self.hide()` |
+| 退出 | `QPushButton` | `btn_quit` | 是 | 120×38，`QApplication.quit()` |
+
+菜单栏动作（和原项目一致）：
+
+| 菜单 | 动作 | objectName |
+| --- | --- | --- |
+| 程序 | 恢复默认 | `action_reset_folder` |
+| 程序 | 退出程序 | `action_exit_2` |
+| 帮助 | 程序地址 | `action_website` |
+| 帮助 | 关于程序 | `action_about` |
 
 学段下拉框按顺序加入：
 
@@ -79,6 +88,10 @@ from gyhd.constants import STAGES  # ("高一","高二","高三","初一","初�
 | `check_weather.toggled` | `controller.set_weather_enabled` |
 | `btn_quit.clicked` | `QApplication.quit` |
 | `btn_tray.clicked` | `self.hide` |
+| `action_about.triggered` | 自己的 `_show_about()` |
+| `action_website.triggered` | 自己的 `_open_website()` |
+| `action_reset_folder.triggered` | 自己的 `_reset_folder()` |
+| `action_exit_2.triggered` | `QApplication.quit` |
 
 不要自己写 `config.toml`，也不要直接改 `controller.config` 的字段；全部走 setter，
 才会保存并通知界面。
@@ -141,8 +154,16 @@ self.label_countdown.setText(f"距离{info.exam} {info.days} 天 · {info.target
 这类可选标签用 `hasattr` 做了保护，没加也不会报错。
 
 ```python
-from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow
+import webbrowser
 
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QMessageBox
+
+from gyhd.constants import (
+    APP_NAME_FULL,
+    APP_VERSION,
+    DEFAULT_WALLPAPER_FOLDER,
+    GITHUB_URL,
+)
 from gyhd.countdown import exam_info
 
 from .main_window_ui import Ui_MainWindow
@@ -179,6 +200,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.check_weather.toggled.connect(controller.set_weather_enabled)
         self.btn_tray.clicked.connect(self.hide)
         self.btn_quit.clicked.connect(QApplication.quit)
+        self.action_about.triggered.connect(self._show_about)
+        self.action_website.triggered.connect(self._open_website)
+        self.action_reset_folder.triggered.connect(self._reset_folder)
+        self.action_exit_2.triggered.connect(QApplication.quit)
 
         controller.config_changed.connect(self._on_config_changed)
         controller.autostart_changed.connect(self._on_autostart_changed)
@@ -232,6 +257,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self._append_log(f"壁纸文件夹：{folder}")
         else:
             self._append_log("壁纸文件夹不可访问")
+
+    def _reset_folder(self) -> None:
+        if not self._controller.set_wallpaper_folder(DEFAULT_WALLPAPER_FOLDER):
+            QMessageBox.warning(
+                self, "恢复默认失败", f"默认文件夹不存在：{DEFAULT_WALLPAPER_FOLDER}"
+            )
+            return
+        self.lineEdit_path.setText(DEFAULT_WALLPAPER_FOLDER)
+        self._append_log("壁纸文件夹已恢复默认")
+
+    def _show_about(self) -> None:
+        QMessageBox.about(
+            self,
+            "关于程序",
+            f"<h3>{APP_NAME_FULL}</h3>"
+            f"<p>版本 {APP_VERSION}</p>"
+            "<p>随机壁纸 · 考试倒计时 · 当天气温 · WPS 放映录屏守护</p>"
+            "<p>作者：陈麒州（2027届）<br />邮箱：kuqilin@88.com</p>"
+            f"<p>GitHub：{GITHUB_URL}</p>",
+        )
+
+    def _open_website(self) -> None:
+        webbrowser.open(GITHUB_URL)
 
     def _on_stage_changed(self, stage: str) -> None:
         if stage != self._controller.config.stage:
@@ -343,7 +391,7 @@ python -m PyQt5.uic.pyuic gyhd\ui\main_window.ui -o gyhd\ui\main_window_ui.py
 > 通常是窗口高度小于 `centralWidget` 布局的 `minimumSizeHint`。布局不会自动把窗口
 > 撑到最小尺寸，而是压缩分组框，里面的控件高度就变成 0 或几像素，看起来就是字被
 > 上下切掉。先看 `MainWindow.minimumSize` 是否太矮；这个仓库的 `.ui` 已经设为
-> `720×730`，并压缩了分组框内容。要再矮就得减少控件行数/日志高度，不能只改窗口
+> `720×780`（带菜单栏），并压缩了分组框内容。要再矮就得减少控件行数/日志高度，不能只改窗口
 > 高度。
 
 只有想完全自由摆放时，才选中 central widget 的布局，右键 `Break Layout`，
