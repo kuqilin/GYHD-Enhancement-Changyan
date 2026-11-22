@@ -307,4 +307,39 @@ python -m PyQt5.uic.pyuic gyhd\ui\main_window.ui -o gyhd\ui\main_window_ui.py
 - 运行 `python main.py` 看真实接线
 - 报 `AttributeError: ... btn_browse` 就是 objectName 不一致
 
+## 8. 为什么控件拖不动大小
+
+因为这个 `.ui` 里控件都放在**布局**（`QVBoxLayout` / `QHBoxLayout`）里。布局会接管
+控件的 `geometry`，所以用鼠标拖边框只能临时改一下，松手后会被布局重新排回去。
+这是正常行为，不是 Designer 坏了。
+
+在布局里改大小，用右侧 **Property Editor**：
+
+| 想改什么 | 改哪个属性 |
+| --- | --- |
+| 固定宽/高 | `minimumSize` 和 `maximumSize` 设成同一个值 |
+| 只限制最小/最大 | `minimumSize` / `maximumSize` |
+| 让它跟着窗口伸缩 | `sizePolicy` → Horizontal/Vertical Policy = `Expanding` |
+| 让它保持内容大小 | `sizePolicy` = `Fixed` 或 `Preferred` |
+| 两列谁占更多空间 | 选中布局（点红色布局边框或 Object Inspector 里的布局项），改 `layoutStretch` |
+| 间距/边距 | 布局的 `layoutSpacing`、`layoutLeftMargin` 等 |
+| 把控件推到一边 | 加 `Horizontal Spacer` / `Vertical Spacer` |
+
+针对这个界面：
+
+- **路径输入框**：`lineEdit_path` 在 `horizontalLayout_path` 里，默认 `Expanding`。
+  想固定宽度就把它的 Horizontal Policy 设 `Fixed`，再设 `minimumWidth`/`maximumWidth`。
+- **浏览/立即更换按钮**：把 `btn_browse`、`btn_change` 的 Horizontal Policy 设 `Fixed`，
+  再设 `minimumWidth`（比如 88）和 `maximumWidth`。也可以选中
+  `horizontalLayout_path`，把 `layoutStretch` 改成 `1,0,0`。
+- **分组框（桌面壁纸、WPS 守护、行为）**：它们在主 `QVBoxLayout` 里，默认横向铺满。
+  想窄一点，设 `maximumWidth`，再在父布局里加左右 Spacer 或改布局对齐方式。
+- **日志框**：`plainText_log` 的 Vertical Policy 是 `Expanding`，所以拖高度没用；
+  想更高/更矮就改 `minimumSize` 的 height，或者改 `group_log` 的 stretch。
+- **整个窗口**：选中 `MainWindow`，改 `minimumSize` / `maximumSize`。两个设成一样
+  就是固定窗口大小。
+
+只有想完全自由摆放时，才选中 central widget 的布局，右键 `Break Layout`，
+然后拖绝对坐标。但这样窗口一缩放就会错位，**不建议**；本项目默认用布局。
+
 更完整的生命周期、线程规则和布局建议见 [UI_CONTRACT.md](UI_CONTRACT.md)。
