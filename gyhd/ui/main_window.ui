@@ -7,42 +7,58 @@
     <x>0</x>
     <y>0</y>
     <width>760</width>
-    <height>720</height>
+    <height>740</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>600</width>
-    <height>560</height>
+    <width>720</width>
+    <height>730</height>
    </size>
   </property>
   <property name="windowTitle">
    <string>花都校区畅言增强工具</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">QLineEdit, QPlainTextEdit {
+    border: 1px solid #cfcfcf;
+    border-radius: 6px;
+    background: #ffffff;
+}
+QPushButton {
+    border: 1px solid #c8c8c8;
+    border-radius: 6px;
+    background: #f7f7f7;
+}
+QPushButton:hover {
+    background: #eeeeee;
+}</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <property name="spacing">
-     <number>14</number>
+     <number>10</number>
     </property>
     <property name="leftMargin">
-     <number>24</number>
+     <number>20</number>
     </property>
     <property name="topMargin">
-     <number>20</number>
+     <number>16</number>
     </property>
     <property name="rightMargin">
-     <number>24</number>
+     <number>20</number>
     </property>
     <property name="bottomMargin">
-     <number>20</number>
+     <number>16</number>
     </property>
     <item>
      <widget class="QLabel" name="label_title">
       <property name="font">
        <font>
+        <family>Microsoft YaHei UI</family>
         <pointsize>18</pointsize>
-        <weight>75</weight>
-        <bold>true</bold>
+        <weight>50</weight>
+        <bold>false</bold>
        </font>
       </property>
       <property name="text">
@@ -67,10 +83,22 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_wallpaper">
        <property name="spacing">
+        <number>6</number>
+       </property>
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>6</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
         <number>8</number>
        </property>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_path">
+        <layout class="QHBoxLayout" name="horizontalLayout_path" stretch="0,0,0">
          <item>
           <widget class="QLineEdit" name="lineEdit_path">
            <property name="readOnly">
@@ -187,55 +215,101 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_guard">
        <property name="spacing">
+        <number>6</number>
+       </property>
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>6</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
         <number>8</number>
        </property>
        <item>
-        <widget class="QCheckBox" name="check_guard">
-         <property name="text">
-          <string>启用后台守护</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayout_guard_checks">
+         <item>
+          <widget class="QCheckBox" name="check_guard">
+           <property name="text">
+            <string>启用后台守护</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="check_only_show">
+           <property name="text">
+            <string>只在 PPT 全屏放映时拦截</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_guard_checks">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
        </item>
        <item>
-        <widget class="QCheckBox" name="check_only_show">
-         <property name="text">
-          <string>只在 PPT 全屏放映时拦截</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_slideshow">
-         <property name="styleSheet">
-          <string notr="true">color: #777777;</string>
-         </property>
-         <property name="text">
-          <string>○ 未检测到放映</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_kill_count">
-         <property name="text">
-          <string>已拦截录屏：0 次</string>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayout_guard_status">
+         <item>
+          <widget class="QLabel" name="label_slideshow">
+           <property name="styleSheet">
+            <string notr="true">color: #777777;</string>
+           </property>
+           <property name="text">
+            <string>○ 未检测到放映</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_kill_count">
+           <property name="text">
+            <string>已拦截录屏：0 次</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_guard_status">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QLabel" name="label_dry_run">
+         <property name="visible">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: #b26a00; font-weight: 600;</string>
          </property>
          <property name="text">
           <string>⚠ 演练模式：只记录，不结束录屏进程</string>
-         </property>
-         <property name="visible">
-          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -245,10 +319,7 @@
           <string notr="true">color: #666666;</string>
          </property>
          <property name="text">
-          <string>命中 ApowerREC / kapower 录屏进程时自动结束。演练模式可在 config.toml 里打开。</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
+          <string>命中 ApowerREC / kapower 录屏进程时自动结束。</string>
          </property>
         </widget>
        </item>
@@ -260,11 +331,23 @@
       <property name="title">
        <string>行为</string>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_behavior">
+      <layout class="QGridLayout" name="gridLayout_behavior">
        <property name="spacing">
         <number>8</number>
        </property>
-       <item>
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>6</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>8</number>
+       </property>
+       <item row="0" column="0">
         <widget class="QCheckBox" name="check_change_on_start">
          <property name="text">
           <string>启动时自动换一张壁纸</string>
@@ -274,14 +357,17 @@
          </property>
         </widget>
        </item>
-       <item>
+       <item row="0" column="1">
         <widget class="QCheckBox" name="check_autostart">
          <property name="text">
           <string>开机自动启动（当前用户）</string>
          </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
-       <item>
+       <item row="1" column="0">
         <widget class="QCheckBox" name="check_minimize_to_tray">
          <property name="text">
           <string>关闭窗口时最小化到托盘</string>
@@ -291,7 +377,7 @@
          </property>
         </widget>
        </item>
-       <item>
+       <item row="1" column="1">
         <widget class="QCheckBox" name="check_weather">
          <property name="text">
           <string>在壁纸上显示当天气温</string>
@@ -316,12 +402,27 @@
        <string>运行日志</string>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_log">
+       <property name="spacing">
+        <number>6</number>
+       </property>
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>6</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>8</number>
+       </property>
        <item>
         <widget class="QPlainTextEdit" name="plainText_log">
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>120</height>
+           <height>70</height>
           </size>
          </property>
          <property name="readOnly">

@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QFileDialog,
     QGroupBox,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -50,8 +51,8 @@ class MainWindow(QMainWindow):
         self._kill_count = 0
 
         self.setWindowTitle(APP_NAME_FULL)
-        self.resize(680, 640)
-        self.setMinimumSize(560, 500)
+        self.resize(760, 740)
+        self.setMinimumSize(720, 720)
         self._build_ui()
         self._connect_signals()
         self._sync_from_config()
@@ -83,7 +84,7 @@ class MainWindow(QMainWindow):
         self.log_view.setObjectName("logView")
         self.log_view.setReadOnly(True)
         self.log_view.setMaximumBlockCount(800)
-        self.log_view.setMinimumHeight(110)
+        self.log_view.setMinimumHeight(90)
         self.log_view.setPlaceholderText("运行日志会显示在这里")
         layout.addWidget(self.log_view, 1)
 
@@ -99,26 +100,12 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("就绪")
         self.setStyleSheet(
             """
-            QGroupBox {
-                font-weight: 600;
-                border: 1px solid #d8d8d8;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding: 10px 12px 12px 12px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 12px;
-                padding: 0 4px;
-            }
             QLineEdit, QPlainTextEdit {
                 border: 1px solid #cfcfcf;
                 border-radius: 6px;
-                padding: 5px 7px;
                 background: #ffffff;
             }
             QPushButton {
-                padding: 5px 14px;
                 border: 1px solid #c8c8c8;
                 border-radius: 6px;
                 background: #f7f7f7;
@@ -131,6 +118,8 @@ class MainWindow(QMainWindow):
     def _build_wallpaper_group(self) -> QGroupBox:
         box = QGroupBox("桌面壁纸")
         layout = QVBoxLayout(box)
+        layout.setContentsMargins(10, 6, 10, 8)
+        layout.setSpacing(6)
         row = QHBoxLayout()
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
@@ -162,40 +151,48 @@ class MainWindow(QMainWindow):
     def _build_guard_group(self) -> QGroupBox:
         box = QGroupBox("WPS 放映守护")
         layout = QVBoxLayout(box)
+        layout.setContentsMargins(10, 6, 10, 8)
+        layout.setSpacing(6)
         self.guard_check = QCheckBox("启用后台守护")
         self.only_slideshow_check = QCheckBox("只在 PPT 全屏放映时拦截")
-        layout.addWidget(self.guard_check)
-        layout.addWidget(self.only_slideshow_check)
+        checks = QHBoxLayout()
+        checks.addWidget(self.guard_check)
+        checks.addWidget(self.only_slideshow_check)
+        checks.addStretch(1)
+        layout.addLayout(checks)
 
         self.slideshow_label = QLabel("○ 未检测到放映")
         self.slideshow_label.setStyleSheet("color: #777777;")
         self.kill_count_label = QLabel("已拦截录屏：0 次")
-        layout.addWidget(self.slideshow_label)
-        layout.addWidget(self.kill_count_label)
+        status = QHBoxLayout()
+        status.addWidget(self.slideshow_label)
+        status.addWidget(self.kill_count_label)
+        status.addStretch(1)
+        layout.addLayout(status)
 
         self.dry_run_label = QLabel("⚠ 演练模式：只记录，不结束录屏进程")
         self.dry_run_label.setStyleSheet("color: #b26a00; font-weight: 600;")
         self.dry_run_label.setVisible(self._controller.dry_run_active)
         layout.addWidget(self.dry_run_label)
 
-        hint = QLabel(
-            "命中 ApowerREC / kapower 录屏进程时自动结束。"
-            "想先验证是否识别正确，可在 config.toml 里把 guard_dry_run 设为 true。"
-        )
+        hint = QLabel("命中 ApowerREC / kapower 录屏进程时自动结束。")
         hint.setObjectName("hintLabel")
-        hint.setWordWrap(True)
         layout.addWidget(hint)
         return box
 
     def _build_behavior_group(self) -> QGroupBox:
         box = QGroupBox("行为")
-        layout = QVBoxLayout(box)
+        grid = QGridLayout(box)
+        grid.setContentsMargins(10, 6, 10, 8)
+        grid.setSpacing(8)
         self.start_change_check = QCheckBox("启动时自动换一张壁纸")
         self.autostart_check = QCheckBox("开机自动启动（当前用户）")
         self.minimize_check = QCheckBox("关闭窗口时最小化到托盘")
-        layout.addWidget(self.start_change_check)
-        layout.addWidget(self.autostart_check)
-        layout.addWidget(self.minimize_check)
+        self.weather_check = QCheckBox("在壁纸上显示当天气温")
+        grid.addWidget(self.start_change_check, 0, 0)
+        grid.addWidget(self.autostart_check, 0, 1)
+        grid.addWidget(self.minimize_check, 1, 0)
+        grid.addWidget(self.weather_check, 1, 1)
         return box
 
     # ---------- signals ----------
@@ -212,6 +209,7 @@ class MainWindow(QMainWindow):
             self._controller.set_change_wallpaper_on_start
         )
         self.minimize_check.toggled.connect(self._controller.set_minimize_to_tray)
+        self.weather_check.toggled.connect(self._controller.set_weather_enabled)
         self.autostart_check.toggled.connect(self._toggle_autostart)
         self.tray_btn.clicked.connect(self.hide)
         self.quit_btn.clicked.connect(QApplication.quit)
@@ -328,6 +326,7 @@ class MainWindow(QMainWindow):
         _set_checked(self.only_slideshow_check, config.kill_only_during_slideshow)
         _set_checked(self.start_change_check, config.change_wallpaper_on_start)
         _set_checked(self.minimize_check, config.minimize_to_tray)
+        _set_checked(self.weather_check, config.weather_enabled)
         _set_checked(self.autostart_check, self._controller.autostart_enabled)
         self.only_slideshow_check.setEnabled(config.guard_enabled)
         self.dry_run_label.setVisible(self._controller.dry_run_active)

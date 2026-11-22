@@ -339,6 +339,13 @@ python -m PyQt5.uic.pyuic gyhd\ui\main_window.ui -o gyhd\ui\main_window_ui.py
 - **整个窗口**：选中 `MainWindow`，改 `minimumSize` / `maximumSize`。两个设成一样
   就是固定窗口大小。
 
+> **Designer 正常、运行后文字被裁？**
+> 通常是窗口高度小于 `centralWidget` 布局的 `minimumSizeHint`。布局不会自动把窗口
+> 撑到最小尺寸，而是压缩分组框，里面的控件高度就变成 0 或几像素，看起来就是字被
+> 上下切掉。先看 `MainWindow.minimumSize` 是否太矮；这个仓库的 `.ui` 已经设为
+> `720×730`，并压缩了分组框内容。要再矮就得减少控件行数/日志高度，不能只改窗口
+> 高度。
+
 只有想完全自由摆放时，才选中 central widget 的布局，右键 `Break Layout`，
 然后拖绝对坐标。但这样窗口一缩放就会错位，**不建议**；本项目默认用布局。
 
