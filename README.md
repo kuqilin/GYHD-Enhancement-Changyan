@@ -239,8 +239,9 @@ python tools/diagnose_wps.py
 1. **直接改 `MainWindow`**：保留 `MainWindow(controller)` 构造签名，以及
    `show_and_raise()` / `set_tray_available(bool)` / `closeEvent`，其他随便重写。
 2. **用 Qt Designer**：新建 `gyhd/ui/main_window.ui`，用 `python -m PyQt5.uic.pyuic ...` 生成，
-   再在 `MainWindow.__init__` 里 `self.setupUi(self)`。完整步骤见
-   [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md) 的“Qt Designer 详细步骤”。
+   再在 `MainWindow.__init__` 里 `self.setupUi(self)`。控件清单和适配层骨架见
+   [docs/DESIGNER_CHECKLIST.md](docs/DESIGNER_CHECKLIST.md)，完整生命周期见
+   [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md)。
 3. **换掉托盘**：`gyhd/ui/tray.py` 可以整体替换，只要 `main.py` 还能拿到
    `tray.available` 和 `tray.show()` 即可。
 
