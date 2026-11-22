@@ -101,6 +101,18 @@ QPushButton:hover {
         <layout class="QHBoxLayout" name="horizontalLayout_path" stretch="0,0,0">
          <item>
           <widget class="QLineEdit" name="lineEdit_path">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>38</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>38</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -111,6 +123,23 @@ QPushButton:hover {
          </item>
          <item>
           <widget class="QPushButton" name="btn_browse">
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+            </font>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>38</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>120</width>
+             <height>38</height>
+            </size>
+           </property>
            <property name="text">
             <string>浏览…</string>
            </property>
@@ -118,6 +147,23 @@ QPushButton:hover {
          </item>
          <item>
           <widget class="QPushButton" name="btn_change">
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+            </font>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>38</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>120</width>
+             <height>38</height>
+            </size>
+           </property>
            <property name="text">
             <string>立即更换</string>
            </property>

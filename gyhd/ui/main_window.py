@@ -52,7 +52,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(APP_NAME_FULL)
         self.resize(760, 740)
-        self.setMinimumSize(720, 720)
+        self.setMinimumSize(720, 730)
         self._build_ui()
         self._connect_signals()
         self._sync_from_config()
@@ -124,8 +124,14 @@ class MainWindow(QMainWindow):
         self.path_edit = QLineEdit()
         self.path_edit.setReadOnly(True)
         self.path_edit.setPlaceholderText("尚未设置壁纸文件夹")
+        self.path_edit.setFixedHeight(38)
         self.browse_btn = QPushButton("浏览…")
         self.change_btn = QPushButton("立即更换")
+        for button in (self.browse_btn, self.change_btn):
+            button.setFixedSize(120, 38)
+            font = button.font()
+            font.setPointSize(10)
+            button.setFont(font)
         row.addWidget(self.path_edit, 1)
         row.addWidget(self.browse_btn)
         row.addWidget(self.change_btn)
