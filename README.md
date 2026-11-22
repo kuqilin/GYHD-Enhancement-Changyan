@@ -284,18 +284,31 @@ Get-Content "$env:LOCALAPPDATA\GYHD-Enhancement-Changyan\logs\app.log" -Tail 20
 
 ## 打包
 
+推荐直接跑构建脚本（默认生成 onedir，启动更快、被杀毒误报更少）：
+
 ```powershell
-pip install -r requirements-dev.txt
-pyinstaller -F -w -i .\assets\GY_1080x1080.ico --add-data "assets;assets" --hidden-import win32com.client --name GYHD-Enhancement-Changyan .\main.py --clean
+.\build.ps1
 ```
 
+等价命令：
+
+```powershell
+pip install -r requirements-dev.txt
+pyinstaller -D -w -i .\assets\GY_1080x1080.ico --add-data "assets;assets" --hidden-import win32com.client --hidden-import pythoncom --hidden-import pywintypes --name GYHD-Enhancement-Changyan .\main.py --clean
+```
+
+- `-D`：目录版（onedir），`dist\GYHD-Enhancement-Changyan\` 整个文件夹一起分发
+- 加 `-OneFile` 或把 `-D` 换成 `-F` 可以生成单文件，但 onefile 每次启动要解包，较慢
 - `--add-data "assets;assets"`：托盘图标是运行时从 `assets/` 读的，必须一起打进去
-- `--hidden-import win32com.client`：创建开机自启 `.lnk` 用，漏了会在运行时找不到模块
+- `--hidden-import win32com.client/pythoncom/pywintypes`：创建开机自启 `.lnk` 用，漏了会找不到模块
 - `-w`：无控制台；日志仍然写到文件
-- `-F`：单文件。后台常驻程序也可以用 `-D`（onedir），启动更快、被杀毒误报更少
 - 打包后快捷方式会指向 exe，不再依赖 Python
 
-产物在 `dist\GYHD-Enhancement-Changyan.exe`。
+产物：
+
+```
+dist\GYHD-Enhancement-Changyan\GYHD-Enhancement-Changyan.exe
+```
 
 ## 开机自启
 
